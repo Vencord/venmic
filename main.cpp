@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <optional>
+#include <unordered_set>
 #include <rohrkabel/main_loop.hpp>
 #include <rohrkabel/registry/registry.hpp>
 
@@ -47,6 +48,8 @@ void listTargets()
     auto core = pipewire::core(context);
     auto reg = pipewire::registry(core);
 
+    std::unordered_set<std::string> seenTargets;
+
     auto reg_listener = reg.listen<pipewire::registry_listener>();
     reg_listener.on<pipewire::registry_event::global>(
         [&](const pipewire::global &global)
@@ -56,11 +59,12 @@ void listTargets()
                 auto node = reg.bind<pipewire::node>(global.id);
                 node.wait();
                 auto info = node.get().map(
-                    [](auto node)
+                    [&](auto node)
                     {
                         auto name = getTarget(node.info().props);
-                        if (name != "" && name != "Chromium input")
+                        if (name != "" && name != "Chromium input" && seenTargets.count(name) == 0)
                         {
+                            seenTargets.insert(name);
                             std::cout << name << '\n';
                         }
                     });
