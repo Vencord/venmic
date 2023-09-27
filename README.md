@@ -1,39 +1,44 @@
 # Vencord Virtmic
 
-A node native addon to allow electron apps to stream with audio on Linux, via pipewire
+A simple command line program, mainly to allow electron apps to stream with audio on Linux, via pipewire
 
 ## Usage
 
-Grab [the prebuilt addon](prebuilt/) or, build it from source as described in [the build instructions](#Compiling)
+Grab the [prebuild](/prebuilt/) or [build from source](#compiling)
 
-The addon offers two methods:
+#### List available targets (apps that are playing audio)
 
-- `getTargets()` returns an array containing the available audio targets (apps that transmit audio)
-- `start(target)` creates a virtual mic for the specified target. Target can be:
-  - `"[All Desktop Audio]"` or `[None]`
-  - A target listed in the return value of `getTargets`
+This will print a list of names, newline separated
+
+```
+./vencord-virtmic --list-targets
+```
+
+#### Create a virtual mic for a target
+
+This will create a virtual mic called `vencord-virtmic` you can use
+
+```
+./vencord-virtmic Firefox
+```
 
 ## Compiling
 
 I did this on fedora, but it should work similarly on other distros.
 
-- Install the build essentials (make, cmake, g++)
-- Install nodejs-devel, pipewire-devel, expected-devel,
+- Install the build essentials (make, cmake, g++, ...)
+- Install pipewire-devel, expected-devel,
 
 ```sh
-git clone [repo url] --recurse-submodules
-cd submodules/rohrkabel
+git clone https://github.com/Vencord/linux-virtmic --recurse-submodules
 mkdir build
 cd build
-cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+cmake ..
 make
-cd ../../..
-pnpm i
-pnpm build
 ```
 
-You should now find the addon at build/Release/vencordvirtmic.node
+You should now find the addon at build/vencord-virtmic
 
 ## Acknowledgements
 
-This library is heavily based on the amazing work by maltejur and other contributors to https://github.com/maltejur/discord-screenaudio
+This library is heavily based on the amazing work by the https://github.com/Soundux/rohrkabel/ library
