@@ -140,6 +140,7 @@ void start(std::string target)
                 if (name == nullstr)
                     return;
 
+                printf("vencord-virtmic: Added %s", name.c_str());
                 if (!nodes.count(global.id))
                 {
                     nodes.emplace(global.id, node.info());
@@ -186,6 +187,8 @@ void start(std::string target)
                 std::string name = getTarget(info.props);
                 if (name == nullstr)
                     return;
+
+                printf("vencord-virtmic: Removed %s", name.c_str());
                 nodes.erase(id);
             }
             if (ports.count(id))

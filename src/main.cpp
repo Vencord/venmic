@@ -32,7 +32,10 @@ namespace virtmic
         if (!args[0]->IsString())
             return ThrowTypeError(isolate, "Expected source to be a string");
 
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "world").ToLocalChecked());
+        auto s = args[0].As<String>();
+        auto target = std::string(*v8::String::Utf8Value(isolate, s));
+
+        start(target);
     }
 
     void GetTargets(const FunctionCallbackInfo<Value> &args)
