@@ -22,22 +22,6 @@ namespace virtmic
             String::NewFromUtf8(isolate, msg).ToLocalChecked()));
     }
 
-    void Start(const FunctionCallbackInfo<Value> &args)
-    {
-        auto isolate = args.GetIsolate();
-
-        if (args.Length() != 1)
-            return ThrowTypeError(isolate, "Wrong number of arguments");
-
-        if (!args[0]->IsString())
-            return ThrowTypeError(isolate, "Expected source to be a string");
-
-        auto s = args[0].As<String>();
-        auto target = std::string(*v8::String::Utf8Value(isolate, s));
-
-        start(target);
-    }
-
     void GetTargets(const FunctionCallbackInfo<Value> &args)
     {
         auto isolate = args.GetIsolate();
@@ -52,10 +36,32 @@ namespace virtmic
         args.GetReturnValue().Set(arr);
     }
 
+    void Start(const FunctionCallbackInfo<Value> &args)
+    {
+        auto isolate = args.GetIsolate();
+
+        if (args.Length() != 1)
+            return ThrowTypeError(isolate, "Wrong number of arguments");
+
+        if (!args[0]->IsString())
+            return ThrowTypeError(isolate, "Expected source to be a string");
+
+        auto s = args[0].As<String>();
+        auto target = std::string(*v8::String::Utf8Value(isolate, s));
+
+        startVirtMic(target);
+    }
+
+    void Stop(const FunctionCallbackInfo<Value> &args)
+    {
+        stopVirtMic();
+    }
+
     void Initialize(Local<Object> exports)
     {
         NODE_SET_METHOD(exports, "getTargets", GetTargets);
         NODE_SET_METHOD(exports, "start", Start);
+        NODE_SET_METHOD(exports, "stop", Stop);
     }
 
     NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize)

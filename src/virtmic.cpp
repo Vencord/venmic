@@ -5,8 +5,33 @@
  */
 
 #include <virtmic.hpp>
+
+#include <thread>
 #include <rohrkabel/loop/main.hpp>
 #include <rohrkabel/registry/registry.hpp>
+
+std::atomic_bool virtMicRunning = false;
+std::thread virtMicThread;
+
+void startVirtMic(std::string target)
+{
+    stopVirtMic();
+
+    virtMicRunning = true;
+    virtMicThread = std::thread(start, target);
+
+    printf("vencord-virtmic: Started virtmic %s\n", target.c_str());
+}
+
+void stopVirtMic()
+{
+    if (virtMicRunning)
+    {
+        printf("vencord-virtmic: Stopping virtmic\n");
+        virtMicRunning = false;
+        virtMicThread.join();
+    }
+}
 
 bool shouldIgnore(std::string name)
 {
@@ -121,7 +146,7 @@ void start(std::string target)
 
     if (target == "[None]")
     {
-        while (true)
+        while (virtMicRunning)
         {
             main_loop.run();
         }
@@ -201,7 +226,7 @@ void start(std::string target)
             }
         });
 
-    while (true)
+    while (virtMicRunning)
     {
         main_loop.run();
     }

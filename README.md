@@ -1,6 +1,3 @@
-This is not finished yet and not usable in its current state
-
-
 # Vencord Virtmic
 
 A node native addon to allow electron apps to stream with audio on Linux, via pipewire

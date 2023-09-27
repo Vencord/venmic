@@ -9,4 +9,7 @@
 
 std::vector<std::string> getTargets();
 
+void startVirtMic(std::string target);
+void stopVirtMic();
+
 void start(std::string target);
