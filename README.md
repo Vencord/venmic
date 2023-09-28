@@ -1,6 +1,6 @@
 # Vencord Virtmic
 
-A simple command line program, mainly to allow electron apps to stream with audio on Linux, via pipewire
+A simple command line program to allow electron apps to stream with audio on Linux via pipewire
 
 ## Usage
 
