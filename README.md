@@ -31,6 +31,7 @@ I did this on fedora, but it should work similarly on other distros.
 
 ```sh
 git clone https://github.com/Vencord/linux-virtmic --recurse-submodules
+cd linux-virtmic
 mkdir build
 cd build
 cmake ..
