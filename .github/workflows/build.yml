@@ -36,7 +36,18 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 👷 Build Dependencies
-        run: "pacman --noconfirm -Syu base-devel cmake gcc git make pipewire pipewire-pulse pnpm"
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make pipewire pipewire-pulse"
+
+      - name: 🍃 Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: 🍃 Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: 🔨 Build
         run: |
@@ -79,13 +90,21 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 👷 Build Dependencies
-        run: |
-          dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake nodejs
-          curl -fsSL https://get.pnpm.io/install.sh | sh -
+        run: "dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake"
+
+      - name: 🍃 Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: 🍃 Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: 🔨 Build
         run: |
-          source /github/home/.bashrc
           pnpm install
 
       - name: 🚀 Upload Artifact
