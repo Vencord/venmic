@@ -79,7 +79,7 @@ namespace vencord
         auto target_ports = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
         auto source_ports = source.ports | ranges::views::filter(is_input);
 
-        for (auto &port : source_ports)
+        for (auto &port : target_ports)
         {
             auto matching_channel = [&](auto &item)
             {
@@ -91,13 +91,13 @@ namespace vencord
                 return item.props["audio.channel"] == port.props["audio.channel"];
             };
 
-            auto others = target_ports | ranges::views::filter(matching_channel);
+            auto others = source_ports | ranges::views::filter(matching_channel);
 
             for (auto &other : others)
             {
                 auto link = core->create<pw::link>(pw::link_factory{
-                                                       port.id,
                                                        other.id,
+                                                       port.id,
                                                    })
                                 .get();
 
