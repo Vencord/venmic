@@ -1,0 +1,21 @@
+{
+  "name": "venmic",
+  "version": "2.0.0",
+  "scripts": {
+    "clean": "cmake-js clean",
+    "install": "cmake-js compile --CDvenmic_addon=ON",
+    "cpcmds": "cmake-js configure --CDCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  },
+  "binary": {
+    "napi_versions": [
+      7
+    ]
+  },
+  "engines": {
+    "node": ">=14.15"
+  },
+  "dependencies": {
+    "cmake-js": "^7.2.1",
+    "node-addon-api": "^7.0.0"
+  }
+}
