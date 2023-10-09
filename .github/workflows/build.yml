@@ -13,6 +13,9 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
+      - name: 👷 Build Dependencies
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make pipewire pipewire-pulse"
+
       - name: 🔨 Build
         run: |
           cmake -B build
@@ -32,6 +35,9 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
+      - name: 👷 Build Dependencies
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make pipewire pipewire-pulse"
+
       - name: 🔨 Build
         run: |
           pnpm install
@@ -49,6 +55,9 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v3
+
+      - name: 👷 Build Dependencies
+        run: "dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake"
 
       - name: 🔨 Build
         run: |
@@ -68,6 +77,9 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v3
+
+      - name: 👷 Build Dependencies
+        run: "dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake"
 
       - name: 🔨 Build
         run: |
