@@ -1,0 +1,80 @@
+on:
+  push:
+  pull_request:
+
+name: 🏗️ Build
+
+jobs:
+  build-arch-server:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🚀 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: server
+          path: build/server
+
+  build-arch-addon:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔨 Build
+        run: |
+          pnpm install
+
+      - name: 🚀 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: addon
+          path: build/Release
+
+  build-fedora-server:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🚀 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: server
+          path: build/server
+
+  build-fedora-addon:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🔨 Build
+        run: |
+          pnpm install
+
+      - name: 🚀 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: addon
+          path: build/Release
