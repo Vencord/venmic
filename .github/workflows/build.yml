@@ -24,7 +24,7 @@ jobs:
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: server
+          name: server-arch
           path: build/server
 
   build-arch-addon:
@@ -45,7 +45,7 @@ jobs:
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: addon
+          name: addon-arch
           path: build/Release
 
   build-fedora-server:
@@ -67,7 +67,7 @@ jobs:
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: server
+          name: server-fedora
           path: build/server
 
   build-fedora-addon:
@@ -90,5 +90,5 @@ jobs:
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: addon
+          name: addon-fedora
           path: build/Release
