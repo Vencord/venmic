@@ -6,7 +6,16 @@ project(venmic LANGUAGES CXX VERSION 2.0)
 # --------------------------------------------------------------------------------------------------------
 
 option(venmic_addon         "Build as addon"                            OFF)
+option(venmic_server        "Build as rest server"                       ON)
 option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
+
+# --------------------------------------------------------------------------------------------------------
+# Addon and Rest-Server are mutually exclusive
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_addon)
+  set(venmic_server OFF)
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Sync `CPM_DOWNLOAD_ALL` with `venmic_prefer_remote`
@@ -85,6 +94,14 @@ CPMFindPackage(
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC soundux::rohrkabel tl::expected cr::channel range-v3::meta)
+
+# --------------------------------------------------------------------------------------------------------
+# Setup Rest Server
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_server)
+  add_subdirectory(server)
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Node Addon
