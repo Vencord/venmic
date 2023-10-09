@@ -35,7 +35,7 @@ namespace vencord
     {
         auto node = core->create<pw::node>({"adapter",
                                             {{"audio.channels", "2"},
-                                             {"node.name", "Vesktop Screen-Share"},
+                                             {"node.name", "vencord-screen-share"},
                                              {"media.class", "Audio/Source/Virtual"},
                                              {"factory.name", "support.null-audio-sink"}}})
                         .get();
