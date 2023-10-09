@@ -17,6 +17,11 @@ namespace vencord
         m_impl->sender->send(set_target{std::move(name)});
     }
 
+    void audio::unlink()
+    {
+        m_impl->sender->send(unset_target{});
+    }
+
     audio &audio::get()
     {
         static std::unique_ptr<audio> instance;

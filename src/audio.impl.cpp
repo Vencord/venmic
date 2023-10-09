@@ -71,7 +71,6 @@ namespace vencord
         {
             return item.direction == pw::port_direction::output;
         };
-
         auto is_input = [](const auto &item)
         {
             return item.direction == pw::port_direction::input;
@@ -105,7 +104,7 @@ namespace vencord
                 if (!link.has_value())
                 {
                     // NOLINTNEXTLINE
-                    fprintf(stderr, "[virt-mic] Failed to create link: %s\n", link.error().message);
+                    fprintf(stderr, "[venmic] Failed to create link: %s\n", link.error().message);
 
                     return;
                 }
@@ -138,10 +137,12 @@ namespace vencord
                 return;
             }
 
-            if (node->info().props["node.name"] == target->first)
+            if (node->info().props["node.name"] != target->first)
             {
-                target->second = global.id;
+                return;
             }
+
+            target->second = global.id;
 
             return;
         }
@@ -189,12 +190,6 @@ namespace vencord
     }
 
     template <>
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] quit) // NOLINT(*-value-param)
-    {
-        core->context()->loop()->quit();
-    }
-
-    template <>
     void audio::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
     {
         auto has_name = [](const auto &item)
@@ -219,7 +214,8 @@ namespace vencord
     }
 
     template <>
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, set_target message) // NOLINT(*-value-param)
+    // NOLINTNEXTLINE(*-value-param)
+    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, set_target message)
     {
         auto name = message.id;
         auto node = ranges::find_if(nodes, [&](auto &item) { return item.second.info.props["node.name"] == name; });
@@ -231,6 +227,21 @@ namespace vencord
 
         target.emplace(name, node->first);
         relink();
+    }
+
+    template <>
+    // NOLINTNEXTLINE(*-value-param)
+    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
+    {
+        target.reset();
+        links.clear();
+    }
+
+    template <>
+    // NOLINTNEXTLINE(*-value-param)
+    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] quit)
+    {
+        core->context()->loop()->quit();
     }
 
     void audio::impl::start(pw_recipe::receiver receiver, cr_recipe::sender sender)

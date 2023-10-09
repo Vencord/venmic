@@ -21,20 +21,24 @@ namespace vencord
     {
     };
 
-    struct quit
-    {
-    };
-
     struct set_target
     {
         std::string id;
+    };
+
+    struct unset_target
+    {
     };
 
     struct ready
     {
     };
 
-    using pw_recipe = pw::recipe<list_nodes, set_target, quit>;
+    struct quit
+    {
+    };
+
+    using pw_recipe = pw::recipe<list_nodes, set_target, unset_target, quit>;
     using cr_recipe = cr::recipe<std::vector<node>, ready>;
 
     struct node_with_ports
