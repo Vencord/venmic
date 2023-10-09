@@ -85,6 +85,7 @@ jobs:
 
       - name: 🔨 Build
         run: |
+          source /github/home/.bashrc
           pnpm install
 
       - name: 🚀 Upload Artifact
