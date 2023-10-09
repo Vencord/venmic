@@ -80,7 +80,7 @@ jobs:
 
       - name: 👷 Build Dependencies
         run: |
-          dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake
+          dnf install -y pipewire-devel make automake git gcc gcc-c++ kernel-devel cmake nodejs
           curl -fsSL https://get.pnpm.io/install.sh | sh -
 
       - name: 🔨 Build
