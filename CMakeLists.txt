@@ -1,29 +1,99 @@
-cmake_minimum_required(VERSION 3.1)
-project(vencord-virtmic LANGUAGES CXX VERSION 1.0)
+cmake_minimum_required(VERSION 3.16)
+project(venmic LANGUAGES CXX VERSION 2.0)
+
+# --------------------------------------------------------------------------------------------------------
+# Library options
+# --------------------------------------------------------------------------------------------------------
+
+option(venmic_addon         "Build as addon"                            OFF)
+option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
+
+# --------------------------------------------------------------------------------------------------------
+# Sync `CPM_DOWNLOAD_ALL` with `venmic_prefer_remote`
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_prefer_remote)
+    message(STATUS "[venmic] Avoiding local packages as 'venmic_prefer_remote' is ON")
+endif()
+
+set(CPM_DOWNLOAD_ALL ${venmic_prefer_remote})
+
+# --------------------------------------------------------------------------------------------------------
+# CMake options
+# --------------------------------------------------------------------------------------------------------
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # --------------------------------------------------------------------------------------------------------
 # Create library
 # --------------------------------------------------------------------------------------------------------
 
-file(GLOB src "main.cpp")
+add_library(${PROJECT_NAME})
+add_library(vencord::venmic ALIAS ${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME} ${src})
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror -Wextra -pedantic)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
-# --------------------------------------------------------------------------------------------------------
-# Supply rohrkabel if example is built stand-alone
-# --------------------------------------------------------------------------------------------------------
-
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    include(FetchContent)
-    FetchContent_Declare(rohrkabel GIT_REPOSITORY "https://github.com/Soundux/rohrkabel")
-    FetchContent_MakeAvailable(rohrkabel)
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
 endif()
 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-unknown-warning-option -Wno-missing-field-initializers -Wno-cast-function-type)
+
 # --------------------------------------------------------------------------------------------------------
-# Link required libraries
+# Add source files
 # --------------------------------------------------------------------------------------------------------
 
-target_link_libraries(${PROJECT_NAME} PRIVATE rohrkabel)
+file(GLOB src "src/*.cpp")
+target_sources(${PROJECT_NAME} PRIVATE ${src})
+
+# --------------------------------------------------------------------------------------------------------
+# Include "include" folder
+# --------------------------------------------------------------------------------------------------------
+
+target_include_directories(${PROJECT_NAME} PUBLIC  "include")
+target_include_directories(${PROJECT_NAME} PRIVATE "include/vencord" "private")
+
+# --------------------------------------------------------------------------------------------------------
+# Setup Dependencies
+# --------------------------------------------------------------------------------------------------------
+
+include("cmake/cpm.cmake")
+
+CPMFindPackage(
+  NAME           rohrkabel
+  VERSION        2.0
+  GIT_REPOSITORY "https://github.com/Soundux/rohrkabel"
+)
+
+CPMFindPackage(
+  NAME           tl-expected
+  VERSION        1.1
+  GIT_REPOSITORY "https://github.com/TartanLlama/expected"
+)
+
+CPMFindPackage(
+  NAME           channel
+  VERSION        2.1
+  GIT_REPOSITORY "https://github.com/Soundux/channel"
+)
+
+CPMFindPackage(
+  NAME           range-v3
+  GIT_TAG        0.12.0
+  GIT_REPOSITORY "https://github.com/ericniebler/range-v3"
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC soundux::rohrkabel tl::expected cr::channel range-v3::meta)
+
+# --------------------------------------------------------------------------------------------------------
+# Setup Node Addon
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_addon AND NOT CMAKE_JS_VERSION)
+  message(FATAL_ERROR "[venmic] Please build the addon using CMake.js")
+endif()
+
+if (venmic_addon)
+  add_subdirectory(addon)
+endif()
