@@ -1,10 +1,13 @@
 {
   "name": "venmic",
+  "license": "MIT",
   "version": "2.0.0",
+  "main": "./lib/index.js",
+  "types": "./lib/module.d.ts",
   "scripts": {
     "clean": "cmake-js clean",
-    "install": "cmake-js compile --CDvenmic_addon=ON",
-    "cpcmds": "cmake-js configure --CDCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    "cpcmds": "cmake-js configure --CDCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+    "install": "pkg-prebuilds-verify ./lib/options.js || cmake-js compile --CDvenmic_addon=ON"
   },
   "binary": {
     "napi_versions": [
@@ -16,6 +19,12 @@
   },
   "dependencies": {
     "cmake-js": "^7.2.1",
-    "node-addon-api": "^7.0.0"
+    "node-addon-api": "^7.0.0",
+    "pkg-prebuilds": "^0.2.1"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "eslint": "^8.51.0"
   }
 }
