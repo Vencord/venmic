@@ -12,8 +12,6 @@ namespace vencord
     {
         should_exit = true;
         sender->send(quit{});
-
-        thread.join();
     }
 
     audio::impl::impl()
@@ -29,7 +27,7 @@ namespace vencord
             start(std::move(receiver), std::move(sender));
         };
 
-        thread = std::thread{thread_start, std::move(pw_receiver), std::move(cr_sender)};
+        thread = std::jthread{thread_start, std::move(pw_receiver), std::move(cr_sender)};
 
         if (receiver->recv_as<vencord::ready>().success)
         {
