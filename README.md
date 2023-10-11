@@ -8,7 +8,7 @@ venmic - screenshare support for pipewire
 
 </div>
 
-# 📖 Usage
+## 📖 Usage
 
 _venmic_ can be used as node-module or as a local rest-server.
 
@@ -24,7 +24,7 @@ The Rest-Server exposes three simple endpoints
 * (GET) `/unlink`
   > Unlinks the currently linked application
 
-# 🏗️ Compiling
+## 🏗️ Compiling
 
 * Rest-Server
     ```bash
