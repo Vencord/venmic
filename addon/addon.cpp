@@ -6,11 +6,23 @@
 #include <range/v3/view.hpp>
 #include <range/v3/algorithm.hpp>
 
+auto audio = [](auto env) -> vencord::audio &
+{
+    try
+    {
+        return vencord::audio::get();
+    }
+    catch (const std::exception &e)
+    {
+        throw Napi::Error::New(env, e.what());
+    }
+};
+
 Napi::Array venmic_list(const Napi::CallbackInfo &info)
 {
     auto env = info.Env();
 
-    auto list = vencord::audio::get().list();
+    auto list = audio(env).list();
     auto rtn  = Napi::Array::New(env, list.size());
 
     auto convert = [&](const auto &item)
@@ -53,7 +65,7 @@ Napi::Boolean venmic_link(const Napi::CallbackInfo &info)
         return Napi::Boolean::New(env, false);
     }
 
-    vencord::audio::get().link(info[0].ToString());
+    audio(env).link(info[0].ToString());
 
     return Napi::Boolean::New(env, true);
 }
@@ -62,7 +74,7 @@ Napi::Value venmic_unlink(const Napi::CallbackInfo &info)
 {
     auto env = info.Env();
 
-    vencord::audio::get().unlink();
+    audio(env).unlink();
 
     return {};
 }
