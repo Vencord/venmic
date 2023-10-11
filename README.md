@@ -38,7 +38,7 @@ The Rest-Server exposes three simple endpoints
     pnpm install && pnpm run install
     ```
 
-# 🤝 Acknowledgements
+## 🤝 Acknowledgements
 
 This project heavily relies on the following projects:
 
