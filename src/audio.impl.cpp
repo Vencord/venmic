@@ -1,5 +1,7 @@
 #include "audio.impl.hpp"
 
+#include <stdexcept>
+
 #include <range/v3/view.hpp>
 #include <range/v3/range.hpp>
 #include <range/v3/algorithm/find_if.hpp>
@@ -28,7 +30,13 @@ namespace vencord
         };
 
         thread = std::thread{thread_start, std::move(pw_receiver), std::move(cr_sender)};
-        receiver->recv_as<ready>();
+
+        if (receiver->recv_as<vencord::ready>().success)
+        {
+            return;
+        }
+
+        throw std::runtime_error("Failed to create audio instance");
     }
 
     void audio::impl::create_mic()
@@ -249,8 +257,14 @@ namespace vencord
         auto loop    = pw::main_loop::create();
         auto context = pw::context::create(loop);
 
-        core     = context->core();
-        registry = core->registry();
+        core     = context ? context->core() : nullptr;
+        registry = core ? core->registry() : nullptr;
+
+        if (!core || !registry)
+        {
+            sender.send(ready{false});
+            return;
+        }
 
         receiver.attach(loop, [this, sender]<typename T>(T &&message) { receive(sender, std::forward<T>(message)); });
 
@@ -259,6 +273,7 @@ namespace vencord
         listener.on<pw::registry_event::global>([this](const auto &global) { global_added(global); });
 
         create_mic();
+
         sender.send(ready{});
 
         while (!should_exit)

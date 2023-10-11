@@ -32,6 +32,7 @@ namespace vencord
 
     struct ready
     {
+        bool success{true};
     };
 
     struct quit

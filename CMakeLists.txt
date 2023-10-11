@@ -71,7 +71,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        2.1
+  GIT_TAG        master
   GIT_REPOSITORY "https://github.com/Soundux/rohrkabel"
 )
 
