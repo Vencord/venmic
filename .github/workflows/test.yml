@@ -31,4 +31,6 @@ jobs:
         run: "pnpm install"
 
       - name: 🧪 Test
-        run: "pnpm run test"
+        run: |
+          systemctl --user start pipewire
+          pnpm run test
