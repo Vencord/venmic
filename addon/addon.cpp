@@ -43,13 +43,13 @@ Napi::Boolean venmic_link(const Napi::CallbackInfo &info)
 
     if (info.Length() != 1)
     {
-        Napi::Error::New(env, "[venmic] 'link' requires one argument");
+        Napi::Error::New(env, "[venmic] 'link' requires one argument").ThrowAsJavaScriptException();
         return Napi::Boolean::New(env, false);
     }
 
     if (!info[0].IsString())
     {
-        Napi::Error::New(env, "[venmic] expected string");
+        Napi::Error::New(env, "[venmic] expected string").ThrowAsJavaScriptException();
         return Napi::Boolean::New(env, false);
     }
 
