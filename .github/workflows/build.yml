@@ -50,8 +50,7 @@ jobs:
           run_install: false
 
       - name: 🔨 Build
-        run: |
-          pnpm install
+        run: "pnpm install"
 
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
@@ -104,8 +103,7 @@ jobs:
           run_install: false
 
       - name: 🔨 Build
-        run: |
-          pnpm install
+        run: "pnpm install"
 
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
