@@ -28,7 +28,7 @@ int main(int argc, char **args)
 {
     using vencord::audio;
 
-    auto port = 3030;
+    auto port = 7591;
 
     if (argc > 1)
     {
