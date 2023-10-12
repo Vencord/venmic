@@ -6,22 +6,17 @@
 #include <vencord/audio.hpp>
 
 template <>
-struct glz::meta<vencord::node>
+struct glz::meta<vencord::target_mode>
 {
-    using T                     = vencord::node;
-    static constexpr auto value = object("name", &T::name, "speaker", &T::speaker);
-};
-
-struct link_body
-{
-    std::string target;
+    using enum vencord::target_mode;
+    static constexpr auto value = enumerate("include", include, "exclude", exclude);
 };
 
 template <>
-struct glz::meta<link_body>
+struct glz::meta<vencord::target>
 {
-    using T                     = link_body;
-    static constexpr auto value = object("target", &T::target);
+    using T                     = vencord::target;
+    static constexpr auto value = object("name", &T::name, "mode", &T::mode);
 };
 
 int main(int argc, char **args)
@@ -55,7 +50,7 @@ int main(int argc, char **args)
     server.Post("/link",
                 [](const auto &req, auto &response)
                 {
-                    link_body parsed;
+                    vencord::target parsed;
                     auto error = glz::read<glz::opts{.error_on_missing_keys = true}>(parsed, req.body);
 
                     if (error)
@@ -64,7 +59,7 @@ int main(int argc, char **args)
                         return;
                     }
 
-                    audio::get().link(parsed.target);
+                    audio::get().link(parsed);
 
                     response.status = 200;
                 });

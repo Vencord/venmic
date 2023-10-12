@@ -1,15 +1,21 @@
 #pragma once
+#include <set>
 #include <memory>
 #include <string>
-#include <vector>
 #include <cstdint>
 
 namespace vencord
 {
-    struct node
+    enum class target_mode
     {
-        bool speaker;
+        include,
+        exclude,
+    };
+
+    struct target
+    {
         std::string name;
+        target_mode mode;
     };
 
     class audio
@@ -26,10 +32,12 @@ namespace vencord
         audio();
 
       public:
-        std::vector<node> list();
+        std::set<std::string> list();
 
       public:
-        void link(std::string name);
+        void link(target target);
+
+      public:
         void unlink();
 
       public:

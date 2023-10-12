@@ -1,24 +1,13 @@
 #include "audio.impl.hpp"
+#include "meta.hpp"
 
 #include <stdexcept>
 
-#include <glaze/glaze.hpp>
-
 #include <range/v3/view.hpp>
 #include <range/v3/range.hpp>
-#include <range/v3/algorithm/find_if.hpp>
 
-struct metadata_name
-{
-    std::string name;
-};
-
-template <>
-struct glz::meta<metadata_name>
-{
-    using T                     = metadata_name;
-    static constexpr auto value = object("name", &T::name);
-};
+#include <range/v3/action.hpp>
+#include <range/v3/algorithm.hpp>
 
 namespace vencord
 {
@@ -43,7 +32,7 @@ namespace vencord
 
         thread = std::jthread{thread_start, std::move(pw_receiver), cr_sender};
 
-        if (receiver->recv_as<vencord::ready>().success)
+        if (receiver->recv_as<ready>().success)
         {
             return;
         }
@@ -68,16 +57,9 @@ namespace vencord
         mic = std::make_unique<pw::node>(std::move(*node));
     }
 
-    void audio::impl::relink()
+    void audio::impl::relink(std::uint32_t id)
     {
-        links.clear();
-
-        if (!target)
-        {
-            return;
-        }
-
-        auto id = target->second;
+        created.erase(id);
 
         if (!nodes.contains(id))
         {
@@ -129,7 +111,7 @@ namespace vencord
                     return;
                 }
 
-                links.emplace_back(std::move(*link));
+                created.emplace(id, std::move(*link));
             }
         }
     }
@@ -137,6 +119,7 @@ namespace vencord
     void audio::impl::global_removed(std::uint32_t id)
     {
         nodes.erase(id);
+        created.erase(id);
     }
 
     void audio::impl::global_added(const pw::global &global)
@@ -152,17 +135,17 @@ namespace vencord
 
             nodes[global.id].info = node->info();
 
-            if (!target)
+            if (!speaker)
             {
                 return;
             }
 
-            if (node->info().props["node.name"] != target->first)
+            if (node->info().props["node.name"] != speaker->name)
             {
                 return;
             }
 
-            target->second = global.id;
+            speaker->id = global.id;
 
             return;
         }
@@ -183,14 +166,26 @@ namespace vencord
                 return;
             }
 
-            auto parsed = glz::read_json<metadata_name>(props["default.audio.sink"].value);
+            auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
 
             if (!parsed.has_value())
             {
                 return;
             }
 
-            speakers.emplace(parsed->name);
+            speaker = {parsed->name};
+
+            auto node =
+                ranges::find_if(nodes, [&](auto &item) { return item.second.info.props["node.name"] == parsed->name; });
+
+            if (node == nodes.end())
+            {
+                return;
+            }
+
+            speaker->id = node->first;
+
+            return;
         }
 
         if (global.type == pw::port::type)
@@ -211,28 +206,82 @@ namespace vencord
 
             auto parent = std::stoull(props["node.id"]);
             nodes[parent].ports.emplace_back(port->info());
+
+            //? Yes this belongs here, as the node is created **before** the ports.
+            on_node(parent);
         }
 
-        if (!target)
+        if (global.type == pw::link::type)
+        {
+            auto link = registry->bind<pw::link>(global.id).get();
+
+            if (!link.has_value())
+            {
+                return;
+            }
+
+            links[global.id] = link->info();
+
+            on_link(global.id);
+        }
+    }
+
+    void audio::impl::on_link(std::uint32_t id)
+    {
+        if (!target || !speaker)
         {
             return;
         }
 
-        if (global.type != pw::port::type)
+        if (target->mode != target_mode::exclude)
         {
             return;
         }
 
-        auto &node = nodes[target->second];
+        auto &info = links[id];
 
-        if (node.ports.empty())
+        if (info.input.node != speaker->id)
+        {
+            return;
+        }
+
+        auto &output = nodes[info.output.node]; // "Output" = the node that is emitting sound
+
+        if (output.info.props["node.name"] == target->name)
         {
             return;
         }
 
         core->update();
 
-        relink();
+        relink(info.output.node);
+    }
+
+    void audio::impl::on_node(std::uint32_t parent)
+    {
+        if (!target)
+        {
+            return;
+        }
+
+        if (target->mode != target_mode::include)
+        {
+            return;
+        }
+
+        if (nodes[parent].info.props["node.name"] != target->name)
+        {
+            return;
+        }
+
+        if (nodes[parent].ports.empty())
+        {
+            return;
+        }
+
+        core->update();
+
+        relink(parent);
     }
 
     template <>
@@ -240,51 +289,42 @@ namespace vencord
     {
         auto has_name = [&](auto &item)
         {
-            if (speakers.has_value() && speakers.value() == item.second.info.props["node.name"])
-            {
-                return true;
-            }
-
-            //? Nodes that have the prop "application.name" are usually desireable
-            return item.second.info.props.contains("application.name");
+            return item.second.info.props.contains("application.name") && item.second.info.props.contains("node.name");
         };
         auto can_output = [](const auto &item)
         {
             return item.second.info.output.max > 0;
         };
-        auto to_node = [](const auto &item)
+        auto get_name = [](auto &item)
         {
-            return node{false, item.second.info.props.at("node.name")};
+            return item.second.info.props["node.name"];
         };
 
-        auto rtn = nodes                               //
-                   | ranges::views::filter(has_name)   //
-                   | ranges::views::filter(can_output) //
-                   | ranges::views::transform(to_node) //
-                   | ranges::to<std::vector>;
-
-        if (speakers.has_value())
-        {
-            rtn.emplace_back(true, speakers.value());
-        }
+        auto rtn = nodes                                //
+                   | ranges::views::filter(has_name)    //
+                   | ranges::views::filter(can_output)  //
+                   | ranges::views::transform(get_name) //
+                   | ranges::to<std::set>;
 
         sender.send(rtn);
     }
 
     template <>
     // NOLINTNEXTLINE(*-value-param)
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, set_target message)
+    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, vencord::target req)
     {
-        auto name = message.id;
-        auto node = ranges::find_if(nodes, [&](auto &item) { return item.second.info.props["node.name"] == name; });
+        created.clear();
+        target.emplace(std::move(req));
 
-        if (node == nodes.end())
+        for (const auto &[id, info] : nodes)
         {
-            return;
+            on_node(id);
         }
 
-        target.emplace(name, node->first);
-        relink();
+        for (const auto &[id, info] : links)
+        {
+            on_link(id);
+        }
     }
 
     template <>
@@ -292,7 +332,7 @@ namespace vencord
     void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
     {
         target.reset();
-        links.clear();
+        created.clear();
     }
 
     template <>

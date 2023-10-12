@@ -6,15 +6,15 @@ namespace vencord
 
     audio::audio() : m_impl(std::make_unique<impl>()) {}
 
-    std::vector<node> audio::list()
+    std::set<std::string> audio::list()
     {
         m_impl->sender->send(list_nodes{});
-        return m_impl->receiver->recv_as<std::vector<node>>();
+        return m_impl->receiver->recv_as<std::set<std::string>>();
     }
 
-    void audio::link(std::string name)
+    void audio::link(target target)
     {
-        m_impl->sender->send(set_target{std::move(name)});
+        m_impl->sender->send(target);
     }
 
     void audio::unlink()

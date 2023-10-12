@@ -30,18 +30,11 @@ struct audio : public Napi::ObjectWrap<audio>
 
         auto convert = [&](const auto &item)
         {
-            auto obj = Napi::Object::New(env);
-
-            obj.Set("name", Napi::String::New(env, item.name));
-            obj.Set("speaker", Napi::Boolean::New(env, item.speaker));
-
-            return obj;
+            return Napi::String::New(env, item);
         };
-
         auto add = [&](const auto &item)
         {
-            auto [index, value] = item;
-            rtn.Set(index, value);
+            rtn.Set(item.first, item.second);
         };
 
         ranges::for_each(list                                    //
@@ -56,19 +49,27 @@ struct audio : public Napi::ObjectWrap<audio>
     {
         auto env = info.Env();
 
-        if (info.Length() != 1)
+        if (info.Length() != 2 || !info[0].IsString() || !info[1].IsString())
         {
-            Napi::Error::New(env, "[venmic] expected one argument").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected two string arguments").ThrowAsJavaScriptException();
             return Napi::Boolean::New(env, false);
         }
 
-        if (!info[0].IsString())
+        auto target = static_cast<std::string>(info[0].ToString());
+        auto mode   = static_cast<std::string>(info[1].ToString());
+
+        if (mode != "include" && mode != "exclude")
         {
-            Napi::Error::New(env, "[venmic] expected string").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected mode to be either exclude or include")
+                .ThrowAsJavaScriptException();
+
             return Napi::Boolean::New(env, false);
         }
 
-        vencord::audio::get().link(info[0].ToString());
+        vencord::audio::get().link({
+            target,
+            mode == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
+        });
 
         return Napi::Boolean::New(env, true);
     }

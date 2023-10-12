@@ -7,10 +7,11 @@ try
 
     assert(Array.isArray(audio.list()));
 
-    assert.throws(() => audio.link(10), /expected string/ig);
-    assert.throws(() => audio.link("", ""), /one argument/ig);
+    assert.throws(() => audio.link(10), /expected two string/ig);
+    assert.throws(() => audio.link(10, 10), /expected two string/ig);
+    assert.throws(() => audio.link("Firefox", "gibberish"), /expected mode/ig);
 
-    assert.doesNotThrow(() => audio.link("Firefox"));
+    assert.doesNotThrow(() => audio.link("Firefox", "include"));
     assert.doesNotThrow(() => audio.unlink());
 }
 catch (error)
