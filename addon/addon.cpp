@@ -8,7 +8,17 @@
 
 struct audio : public Napi::ObjectWrap<audio>
 {
-    using Napi::ObjectWrap<audio>::ObjectWrap;
+    audio(const Napi::CallbackInfo &info) : Napi::ObjectWrap<audio>::ObjectWrap(info)
+    {
+        try
+        {
+            vencord::audio::get();
+        }
+        catch (std::exception &e)
+        {
+            Napi::Error::New(info.Env(), e.what()).ThrowAsJavaScriptException();
+        }
+    }
 
   public:
     Napi::Value list(const Napi::CallbackInfo &info) // NOLINT(*-static)
@@ -94,15 +104,6 @@ struct audio : public Napi::ObjectWrap<audio>
     {
         auto env          = info.Env();
         auto *constructor = env.GetInstanceData<Napi::FunctionReference>();
-
-        try
-        {
-            vencord::audio::get();
-        }
-        catch (std::exception &e)
-        {
-            Napi::Error::New(info.Env(), e.what()).ThrowAsJavaScriptException();
-        }
 
         return constructor->New({});
     }
