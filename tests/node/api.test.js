@@ -1,10 +1,20 @@
 const venmic = require("../../lib");
 const assert = require("assert");
 
-assert(typeof venmic["list"] === "function");
-assert(typeof venmic["unlink"] === "function");
+try
+{
+    const audio = new venmic.audio();
 
-assert.throws(() => venmic.link(10), /expected string/ig);
-assert.throws(() => venmic.link("", ""), /one argument/ig);
+    assert(Array.isArray(audio.list()));
 
-assert.throws(() => venmic.link("Firefox"), /failed to create audio instance/ig);
+    assert.throws(() => audio.link(10), /expected string/ig);
+    assert.throws(() => audio.link("", ""), /one argument/ig);
+
+    assert.doesNotThrow(() => audio.link("Firefox"));
+    assert.doesNotThrow(() => audio.unlink());
+}
+catch (error)
+{
+    console.log("No PipeWire Server available");
+    assert.throws(() => new venmic.audio(), /failed to create audio instance/ig);
+}
