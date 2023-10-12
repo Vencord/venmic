@@ -71,7 +71,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        2.2
+  VERSION        2.3
   GIT_REPOSITORY "https://github.com/Soundux/rohrkabel"
 )
 
@@ -93,7 +93,13 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/ericniebler/range-v3"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC soundux::rohrkabel tl::expected cr::channel range-v3::meta)
+CPMFindPackage(
+  NAME           glaze
+  VERSION        1.5.2
+  GIT_REPOSITORY "https://github.com/stephenberry/glaze"
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC soundux::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Rest Server

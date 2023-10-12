@@ -9,6 +9,7 @@
 #include <rohrkabel/node/node.hpp>
 #include <rohrkabel/port/port.hpp>
 #include <rohrkabel/link/link.hpp>
+#include <rohrkabel/metadata/metadata.hpp>
 
 #include <rohrkabel/channel/channel.hpp>
 #include <rohrkabel/registry/registry.hpp>
@@ -58,6 +59,7 @@ namespace vencord
 
       private:
         std::unique_ptr<pw::node> mic;
+        std::optional<std::string> speakers;
         std::optional<std::pair<std::string, std::uint32_t>> target;
 
       private:

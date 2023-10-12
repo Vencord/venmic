@@ -30,7 +30,7 @@ Napi::Array venmic_list(const Napi::CallbackInfo &info)
         auto obj = Napi::Object::New(env);
 
         obj.Set("name", Napi::String::New(env, item.name));
-        obj.Set("id", Napi::Number::New(env, item.id));
+        obj.Set("speaker", Napi::Boolean::New(env, item.speaker));
 
         return obj;
     };

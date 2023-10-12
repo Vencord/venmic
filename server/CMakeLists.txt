@@ -30,12 +30,6 @@ target_sources(${PROJECT_NAME} PRIVATE ${src})
 include("../cmake/cpm.cmake")
 
 CPMFindPackage(
-  NAME           glaze
-  VERSION        1.5.2
-  GIT_REPOSITORY "https://github.com/stephenberry/glaze"
-)
-
-CPMFindPackage(
   NAME           cpp-httplib
   VERSION        0.14.1
   GIT_REPOSITORY "https://github.com/yhirose/cpp-httplib"

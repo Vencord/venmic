@@ -8,8 +8,8 @@ namespace vencord
 {
     struct node
     {
+        bool speaker;
         std::string name;
-        std::uint32_t id;
     };
 
     class audio

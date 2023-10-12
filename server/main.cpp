@@ -9,7 +9,7 @@ template <>
 struct glz::meta<vencord::node>
 {
     using T                     = vencord::node;
-    static constexpr auto value = object("name", &T::name, "id", &T::id);
+    static constexpr auto value = object("name", &T::name, "speaker", &T::speaker);
 };
 
 struct link_body

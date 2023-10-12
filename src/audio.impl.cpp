@@ -2,9 +2,23 @@
 
 #include <stdexcept>
 
+#include <glaze/glaze.hpp>
+
 #include <range/v3/view.hpp>
 #include <range/v3/range.hpp>
 #include <range/v3/algorithm/find_if.hpp>
+
+struct metadata_name
+{
+    std::string name;
+};
+
+template <>
+struct glz::meta<metadata_name>
+{
+    using T                     = metadata_name;
+    static constexpr auto value = object("name", &T::name);
+};
 
 namespace vencord
 {
@@ -27,7 +41,7 @@ namespace vencord
             start(std::move(receiver), std::move(sender));
         };
 
-        thread = std::jthread{thread_start, std::move(pw_receiver), std::move(cr_sender)};
+        thread = std::jthread{thread_start, std::move(pw_receiver), cr_sender};
 
         if (receiver->recv_as<vencord::ready>().success)
         {
@@ -153,6 +167,32 @@ namespace vencord
             return;
         }
 
+        if (global.type == pw::metadata::type)
+        {
+            auto metadata = registry->bind<pw::metadata>(global.id).get();
+
+            if (!metadata.has_value())
+            {
+                return;
+            }
+
+            auto props = metadata->properties();
+
+            if (!props.contains("default.audio.sink"))
+            {
+                return;
+            }
+
+            auto parsed = glz::read_json<metadata_name>(props["default.audio.sink"].value);
+
+            if (!parsed.has_value())
+            {
+                return;
+            }
+
+            speakers.emplace(parsed->name);
+        }
+
         if (global.type == pw::port::type)
         {
             auto port = registry->bind<pw::port>(global.id).get();
@@ -198,9 +238,15 @@ namespace vencord
     template <>
     void audio::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
     {
-        auto has_name = [](const auto &item)
+        auto has_name = [&](auto &item)
         {
-            return item.second.info.props.contains("node.name");
+            if (speakers.has_value() && speakers.value() == item.second.info.props["node.name"])
+            {
+                return true;
+            }
+
+            //? Nodes that have the prop "application.name" are usually desireable
+            return item.second.info.props.contains("application.name");
         };
         auto can_output = [](const auto &item)
         {
@@ -208,15 +254,21 @@ namespace vencord
         };
         auto to_node = [](const auto &item)
         {
-            return node{item.second.info.props.at("node.name"), item.first};
+            return node{false, item.second.info.props.at("node.name")};
         };
 
-        sender.send(nodes                               //
-                    | ranges::views::filter(has_name)   //
-                    | ranges::views::filter(can_output) //
-                    | ranges::views::transform(to_node) //
-                    | ranges::to<std::vector>           //
-        );
+        auto rtn = nodes                               //
+                   | ranges::views::filter(has_name)   //
+                   | ranges::views::filter(can_output) //
+                   | ranges::views::transform(to_node) //
+                   | ranges::to<std::vector>;
+
+        if (speakers.has_value())
+        {
+            rtn.emplace_back(true, speakers.value());
+        }
+
+        sender.send(rtn);
     }
 
     template <>
