@@ -1,4 +1,4 @@
-export class audio
+export class Audio
 {
     unlink(): void;
     list(): string[];

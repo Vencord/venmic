@@ -85,7 +85,7 @@ struct audio : public Napi::ObjectWrap<audio>
     {
         static constexpr auto attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
 
-        auto func = DefineClass(env, "audio",
+        auto func = DefineClass(env, "Audio",
                                 {
                                     InstanceMethod<&audio::link>("link", attributes),
                                     InstanceMethod<&audio::list>("list", attributes),
@@ -94,7 +94,7 @@ struct audio : public Napi::ObjectWrap<audio>
 
         auto *constructor = new Napi::FunctionReference{Napi::Persistent(func)};
 
-        exports.Set("audio", func);
+        exports.Set("Audio", func);
 
         env.SetInstanceData<Napi::FunctionReference>(constructor);
 

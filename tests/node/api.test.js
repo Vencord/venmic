@@ -3,7 +3,7 @@ const assert = require("assert");
 
 try
 {
-    const audio = new venmic.audio();
+    const audio = new venmic.Audio();
 
     assert(Array.isArray(audio.list()));
 
@@ -17,5 +17,5 @@ try
 catch (error)
 {
     console.warn("No PipeWire Server available");
-    assert.throws(() => new venmic.audio(), /failed to create audio instance/ig);
+    assert.throws(() => new venmic.Audio(), /failed to create audio instance/ig);
 }
