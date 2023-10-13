@@ -19,7 +19,12 @@ The Rest-Server exposes three simple endpoints
   > List all available applications to share
 
 * (POST) `/link`
-  > Expects a JSON-Body containing the target application, i.e. `{"target": "Firefox"}`
+  > Expects a JSON-Body containing the target application, i.e. `{"name": "Firefox", "mode": "include"}`  
+  > Valid values for `mode` are:
+  > * `include`  
+  >    The specified application will be shared
+  > * `exclude`  
+  >    All _but_ the specified application will be shared
 
 * (GET) `/unlink`
   > Unlinks the currently linked application
