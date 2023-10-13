@@ -16,6 +16,6 @@ try
 }
 catch (error)
 {
-    console.log("No PipeWire Server available");
+    console.warn("No PipeWire Server available");
     assert.throws(() => new venmic.audio(), /failed to create audio instance/ig);
 }
