@@ -38,6 +38,8 @@ int main(int argc, char **args)
         }
     }
 
+    std::cout << std::format("Running on port {}\n", port);
+
     httplib::Server server;
 
     server.Get("/list",
