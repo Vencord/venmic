@@ -1,4 +1,4 @@
-export class Audio
+export class PatchBay
 {
     unlink(): void;
     list(): string[];

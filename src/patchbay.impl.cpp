@@ -1,4 +1,4 @@
-#include "audio.impl.hpp"
+#include "patchbay.impl.hpp"
 #include "meta.hpp"
 
 #include <stdexcept>
@@ -11,7 +11,7 @@
 
 namespace vencord
 {
-    audio::impl::~impl()
+    patchbay::impl::~impl()
     {
         should_exit = true;
         sender->send(quit{});
@@ -19,7 +19,7 @@ namespace vencord
         thread.join();
     }
 
-    audio::impl::impl()
+    patchbay::impl::impl()
     {
         auto [pw_sender, pw_receiver] = pw::channel<pw_recipe>();
         auto [cr_sender, cr_receiver] = cr::channel<cr_recipe>();
@@ -39,10 +39,10 @@ namespace vencord
             return;
         }
 
-        throw std::runtime_error("Failed to create audio instance");
+        throw std::runtime_error("Failed to create patchbay instance");
     }
 
-    void audio::impl::create_mic()
+    void patchbay::impl::create_mic()
     {
         auto node = core->create<pw::node>({"adapter",
                                             {{"audio.channels", "2"},
@@ -59,7 +59,7 @@ namespace vencord
         mic = std::make_unique<pw::node>(std::move(*node));
     }
 
-    void audio::impl::relink(std::uint32_t id)
+    void patchbay::impl::relink(std::uint32_t id)
     {
         created.erase(id);
 
@@ -118,13 +118,13 @@ namespace vencord
         }
     }
 
-    void audio::impl::global_removed(std::uint32_t id)
+    void patchbay::impl::global_removed(std::uint32_t id)
     {
         nodes.erase(id);
         created.erase(id);
     }
 
-    void audio::impl::global_added(const pw::global &global)
+    void patchbay::impl::global_added(const pw::global &global)
     {
         if (global.type == pw::node::type)
         {
@@ -228,7 +228,7 @@ namespace vencord
         }
     }
 
-    void audio::impl::on_link(std::uint32_t id)
+    void patchbay::impl::on_link(std::uint32_t id)
     {
         if (!target || !speaker)
         {
@@ -259,7 +259,7 @@ namespace vencord
         relink(info.output.node);
     }
 
-    void audio::impl::on_node(std::uint32_t parent)
+    void patchbay::impl::on_node(std::uint32_t parent)
     {
         if (!target)
         {
@@ -287,7 +287,7 @@ namespace vencord
     }
 
     template <>
-    void audio::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
+    void patchbay::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
     {
         auto has_name = [&](auto &item)
         {
@@ -313,7 +313,7 @@ namespace vencord
 
     template <>
     // NOLINTNEXTLINE(*-value-param)
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, vencord::target req)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, vencord::target req)
     {
         created.clear();
         target.emplace(std::move(req));
@@ -331,7 +331,7 @@ namespace vencord
 
     template <>
     // NOLINTNEXTLINE(*-value-param)
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
     {
         target.reset();
         created.clear();
@@ -339,12 +339,12 @@ namespace vencord
 
     template <>
     // NOLINTNEXTLINE(*-value-param)
-    void audio::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] quit)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] quit)
     {
         core->context()->loop()->quit();
     }
 
-    void audio::impl::start(pw_recipe::receiver receiver, cr_recipe::sender sender)
+    void patchbay::impl::start(pw_recipe::receiver receiver, cr_recipe::sender sender)
     {
         auto loop    = pw::main_loop::create();
         auto context = pw::context::create(loop);

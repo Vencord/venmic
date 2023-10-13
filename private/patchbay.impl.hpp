@@ -1,5 +1,5 @@
 #pragma once
-#include "audio.hpp"
+#include "patchbay.hpp"
 #include "message.hpp"
 
 #include <map>
@@ -27,7 +27,7 @@ namespace vencord
         std::uint32_t id;
     };
 
-    class audio::impl
+    class patchbay::impl
     {
         std::thread thread;
 

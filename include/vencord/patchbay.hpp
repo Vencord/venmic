@@ -18,7 +18,7 @@ namespace vencord
         target_mode mode;
     };
 
-    class audio
+    class patchbay
     {
         class impl;
 
@@ -26,10 +26,10 @@ namespace vencord
         std::unique_ptr<impl> m_impl;
 
       public:
-        ~audio();
+        ~patchbay();
 
       private:
-        audio();
+        patchbay();
 
       public:
         std::set<std::string> list();
@@ -41,6 +41,6 @@ namespace vencord
         void unlink();
 
       public:
-        static audio &get();
+        static patchbay &get();
     };
 } // namespace vencord

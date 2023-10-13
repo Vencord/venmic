@@ -3,7 +3,7 @@
 
 #include <httplib.h>
 #include <glaze/glaze.hpp>
-#include <vencord/audio.hpp>
+#include <vencord/patchbay.hpp>
 
 template <>
 struct glz::meta<vencord::target_mode>
@@ -21,7 +21,7 @@ struct glz::meta<vencord::target>
 
 int main(int argc, char **args)
 {
-    using vencord::audio;
+    using vencord::patchbay;
 
     auto port = 7591;
 
@@ -43,7 +43,7 @@ int main(int argc, char **args)
     server.Get("/list",
                [](const auto &, auto &response)
                {
-                   auto data = glz::write_json(audio::get().list());
+                   auto data = glz::write_json(patchbay::get().list());
                    response.set_content(data, "application/json");
                });
 
@@ -59,7 +59,7 @@ int main(int argc, char **args)
                         return;
                     }
 
-                    audio::get().link(parsed);
+                    patchbay::get().link(parsed);
 
                     response.status = 200;
                 });
@@ -67,7 +67,7 @@ int main(int argc, char **args)
     server.Get("/unlink",
                [](const auto &, auto &response)
                {
-                   audio::get().unlink();
+                   patchbay::get().unlink();
                    response.status = 200;
                });
 

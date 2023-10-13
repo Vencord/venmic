@@ -3,19 +3,19 @@ const assert = require("assert");
 
 try
 {
-    const audio = new venmic.Audio();
+    const patchbay = new venmic.PatchBay();
 
-    assert(Array.isArray(audio.list()));
+    assert(Array.isArray(patchbay.list()));
 
-    assert.throws(() => audio.link(10), /expected two string/ig);
-    assert.throws(() => audio.link(10, 10), /expected two string/ig);
-    assert.throws(() => audio.link("Firefox", "gibberish"), /expected mode/ig);
+    assert.throws(() => patchbay.link(10), /expected two string/ig);
+    assert.throws(() => patchbay.link(10, 10), /expected two string/ig);
+    assert.throws(() => patchbay.link("Firefox", "gibberish"), /expected mode/ig);
 
-    assert.doesNotThrow(() => audio.link("Firefox", "include"));
-    assert.doesNotThrow(() => audio.unlink());
+    assert.doesNotThrow(() => patchbay.link("Firefox", "include"));
+    assert.doesNotThrow(() => patchbay.unlink());
 }
 catch (error)
 {
     console.warn("No PipeWire Server available");
-    assert.throws(() => new venmic.Audio(), /failed to create audio instance/ig);
+    assert.throws(() => new venmic.PatchBay(), /failed to create patchbay instance/ig);
 }

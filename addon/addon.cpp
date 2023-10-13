@@ -1,18 +1,18 @@
 #include <cstdio>
 #include <napi.h>
 
-#include <vencord/audio.hpp>
+#include <vencord/patchbay.hpp>
 
 #include <range/v3/view.hpp>
 #include <range/v3/algorithm.hpp>
 
-struct audio : public Napi::ObjectWrap<audio>
+struct patchbay : public Napi::ObjectWrap<patchbay>
 {
-    audio(const Napi::CallbackInfo &info) : Napi::ObjectWrap<audio>::ObjectWrap(info)
+    patchbay(const Napi::CallbackInfo &info) : Napi::ObjectWrap<patchbay>::ObjectWrap(info)
     {
         try
         {
-            vencord::audio::get();
+            vencord::patchbay::get();
         }
         catch (std::exception &e)
         {
@@ -25,7 +25,7 @@ struct audio : public Napi::ObjectWrap<audio>
     {
         auto env = info.Env();
 
-        auto list = vencord::audio::get().list();
+        auto list = vencord::patchbay::get().list();
         auto rtn  = Napi::Array::New(env, list.size());
 
         auto convert = [&](const auto &item)
@@ -66,7 +66,7 @@ struct audio : public Napi::ObjectWrap<audio>
             return Napi::Boolean::New(env, false);
         }
 
-        vencord::audio::get().link({
+        vencord::patchbay::get().link({
             target,
             mode == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
         });
@@ -76,7 +76,7 @@ struct audio : public Napi::ObjectWrap<audio>
 
     Napi::Value unlink([[maybe_unused]] const Napi::CallbackInfo &) // NOLINT(*-static)
     {
-        vencord::audio::get().unlink();
+        vencord::patchbay::get().unlink();
         return {};
     }
 
@@ -85,16 +85,16 @@ struct audio : public Napi::ObjectWrap<audio>
     {
         static constexpr auto attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable);
 
-        auto func = DefineClass(env, "Audio",
+        auto func = DefineClass(env, "PatchBay",
                                 {
-                                    InstanceMethod<&audio::link>("link", attributes),
-                                    InstanceMethod<&audio::list>("list", attributes),
-                                    InstanceMethod<&audio::unlink>("unlink", attributes),
+                                    InstanceMethod<&patchbay::link>("link", attributes),
+                                    InstanceMethod<&patchbay::list>("list", attributes),
+                                    InstanceMethod<&patchbay::unlink>("unlink", attributes),
                                 });
 
         auto *constructor = new Napi::FunctionReference{Napi::Persistent(func)};
 
-        exports.Set("Audio", func);
+        exports.Set("PatchBay", func);
 
         env.SetInstanceData<Napi::FunctionReference>(constructor);
 
@@ -112,7 +112,7 @@ struct audio : public Napi::ObjectWrap<audio>
 
 Napi::Object init(Napi::Env env, Napi::Object exports)
 {
-    audio::Init(env, exports);
+    patchbay::Init(env, exports);
     return exports;
 }
 
