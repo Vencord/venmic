@@ -29,7 +29,7 @@ namespace vencord
 
     class patchbay::impl
     {
-        std::thread thread;
+        std::jthread thread;
 
       public:
         std::unique_ptr<pw_recipe::sender> sender;

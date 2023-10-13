@@ -32,7 +32,7 @@ namespace vencord
             start(std::move(receiver), std::move(sender));
         };
 
-        thread = std::thread{thread_start, std::move(pw_receiver), cr_sender};
+        thread = std::jthread{thread_start, std::move(pw_receiver), cr_sender};
 
         if (receiver->recv_as<ready>().success)
         {
