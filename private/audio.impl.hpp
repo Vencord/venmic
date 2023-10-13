@@ -29,7 +29,7 @@ namespace vencord
 
     class audio::impl
     {
-        std::jthread thread;
+        std::thread thread;
 
       public:
         std::unique_ptr<pw_recipe::sender> sender;
