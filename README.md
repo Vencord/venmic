@@ -35,7 +35,7 @@ The Rest-Server exposes three simple endpoints
 * Node-Addon
     ```bash
     git clone https://github.com/Vencord/linux-virtmic && cd linux-virtmic
-    pnpm install && pnpm run install
+    pnpm install
     ```
 
 ## 🤝 Acknowledgements
