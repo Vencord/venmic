@@ -1,44 +1,53 @@
-# Vencord Virtmic
+<div align="center">
 
-A simple command line program to allow electron apps to stream with audio on Linux via pipewire
+<img src="https://avatars.githubusercontent.com/u/113042587" width="150">
 
-## Usage
+<br/>
 
-Grab the [prebuild](/prebuilt/) or [build from source](#compiling)
+venmic - screenshare support for pipewire
 
-#### List available targets (apps that are playing audio)
+</div>
 
-This will print a list of names, newline separated
+## 📖 Usage
 
-```
-./vencord-virtmic --list-targets
-```
+_venmic_ can be used as node-module or as a local rest-server.
 
-#### Create a virtual mic for a target
+The node-module is intended for internal usage by [Vesktop](https://github.com/Vencord/Vesktop).
 
-This will create a virtual mic called `vencord-virtmic` you can use
+The Rest-Server exposes three simple endpoints
+* (GET) `/list`
+  > List all available applications to share
 
-```
-./vencord-virtmic Firefox
-```
+* (POST) `/link`
+  > Expects a JSON-Body containing the target application, i.e. `{"name": "Firefox", "mode": "include"}`  
+  > Valid values for `mode` are:
+  > * `include`  
+  >    The specified application will be shared
+  > * `exclude`  
+  >    All _but_ the specified application will be shared
 
-## Compiling
+* (GET) `/unlink`
+  > Unlinks the currently linked application
 
-I did this on fedora, but it should work similarly on other distros.
+## 🏗️ Compiling
 
-- Install the build essentials (make, cmake, g++, ...)
-- Install pipewire-devel, expected-devel,
+* Rest-Server
+    ```bash
+    git clone https://github.com/Vencord/linux-virtmic && cd linux-virtmic
+    cmake -B build && cmake --build build
+    ```
 
-```sh
-git clone https://github.com/Vencord/linux-virtmic --recurse-submodules
-mkdir build
-cd build
-cmake ..
-make
-```
+* Node-Addon
+    ```bash
+    git clone https://github.com/Vencord/linux-virtmic && cd linux-virtmic
+    pnpm install
+    ```
 
-You should now find the addon at build/vencord-virtmic
+## 🤝 Acknowledgements
 
-## Acknowledgements
+This project heavily relies on the following projects:
 
-This library is heavily based on the amazing work by the https://github.com/Soundux/rohrkabel/ library
+* [Soundux/rohrkabel](https://github.com/Soundux/rohrkabel/)
+* [cmake-js](https://github.com/cmake-js/cmake-js)
+
+Kudos to all the developers involved, keep up the great work!
