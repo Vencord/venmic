@@ -364,6 +364,9 @@ namespace vencord
 
         if (!core || !registry)
         {
+            // NOLINTNEXTLINE
+            fprintf(stderr, "[venmic] Could not create core or registry\n");
+
             sender.send(ready{false});
             return;
         }
