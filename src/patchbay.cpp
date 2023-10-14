@@ -68,7 +68,7 @@ namespace vencord
             if (state == PA_CONTEXT_FAILED)
             {
                 // NOLINTNEXTLINE
-                fprintf(stderr, "[venmic] Failed to connext pulse context\n");
+                fprintf(stderr, "[venmic] Failed to connect pulse context\n");
 
                 pa_mainloop_quit(loop, 0);
                 return;
