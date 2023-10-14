@@ -249,7 +249,7 @@ namespace vencord
 
         auto &output = nodes[info.output.node]; // "Output" = the node that is emitting sound
 
-        if (output.info.props["node.name"] == target->name)
+        if (output.info.props[target->key] == target->value)
         {
             return;
         }
@@ -271,7 +271,7 @@ namespace vencord
             return;
         }
 
-        if (nodes[parent].info.props["node.name"] != target->name)
+        if (nodes[parent].info.props[target->key] != target->value)
         {
             return;
         }
@@ -289,23 +289,32 @@ namespace vencord
     template <>
     void patchbay::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
     {
-        auto has_name = [&](auto &item)
+        static std::set<std::string> desired_props{"application.process.binary", "application.process.id", "node.name"};
+
+        auto desireable = [&](auto &item)
         {
-            return item.second.info.props.contains("application.name") && item.second.info.props.contains("node.name");
+            return ranges::all_of(desired_props, [&](const auto &key) { return item.second.info.props.contains(key); });
         };
         auto can_output = [](const auto &item)
         {
             return item.second.info.output.max > 0;
         };
-        auto get_name = [](auto &item)
+        auto to_node = [](auto &item)
         {
-            return item.second.info.props["node.name"];
+            node rtn;
+
+            for (const auto &key : desired_props)
+            {
+                rtn[key] = item.second.info.props[key];
+            }
+
+            return rtn;
         };
 
-        auto rtn = nodes                                //
-                   | ranges::views::filter(has_name)    //
-                   | ranges::views::filter(can_output)  //
-                   | ranges::views::transform(get_name) //
+        auto rtn = nodes                               //
+                   | ranges::views::filter(desireable) //
+                   | ranges::views::filter(can_output) //
+                   | ranges::views::transform(to_node) //
                    | ranges::to<std::set>;
 
         sender.send(rtn);

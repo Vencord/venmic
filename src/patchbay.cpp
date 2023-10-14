@@ -6,10 +6,10 @@ namespace vencord
 
     patchbay::patchbay() : m_impl(std::make_unique<impl>()) {}
 
-    std::set<std::string> patchbay::list()
+    std::set<node> patchbay::list()
     {
         m_impl->sender->send(list_nodes{});
-        return m_impl->receiver->recv_as<std::set<std::string>>();
+        return m_impl->receiver->recv_as<std::set<node>>();
     }
 
     void patchbay::link(target target)
