@@ -1,6 +1,7 @@
 #include "patchbay.impl.hpp"
 
 #include <future>
+#include <optional>
 #include <pulse/pulseaudio.h>
 
 namespace vencord
@@ -39,6 +40,13 @@ namespace vencord
 
     bool patchbay::has_pipewire()
     {
+        static std::optional<bool> cached;
+
+        if (cached)
+        {
+            return cached.value();
+        }
+
         auto *loop    = pa_mainloop_new();
         auto *context = pa_context_new(pa_mainloop_get_api(loop), "venmic-info");
 
@@ -98,6 +106,9 @@ namespace vencord
         auto name = result.get();
         std::transform(name.begin(), name.end(), name.begin(), [](char c) { return std::tolower(c); });
 
-        return name.find("pipewire") != std::string::npos;
+        auto rtn = name.find("pipewire") != std::string::npos;
+        cached.emplace(rtn);
+
+        return rtn;
     }
 } // namespace vencord
