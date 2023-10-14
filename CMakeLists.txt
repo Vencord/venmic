@@ -32,6 +32,40 @@ set(CPM_DOWNLOAD_ALL ${venmic_prefer_remote})
 # --------------------------------------------------------------------------------------------------------
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+cmake_minimum_required(VERSION 3.16)
+project(venmic LANGUAGES CXX VERSION 2.0)
+
+# --------------------------------------------------------------------------------------------------------
+# Library options
+# --------------------------------------------------------------------------------------------------------
+
+option(venmic_addon         "Build as addon"                            OFF)
+option(venmic_server        "Build as rest server"                       ON)
+option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
+
+# --------------------------------------------------------------------------------------------------------
+# Addon and Rest-Server are mutually exclusive
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_addon)
+  set(venmic_server OFF)
+endif()
+
+# --------------------------------------------------------------------------------------------------------
+# Sync `CPM_DOWNLOAD_ALL` with `venmic_prefer_remote`
+# --------------------------------------------------------------------------------------------------------
+
+if (venmic_prefer_remote)
+    message(STATUS "[venmic] Avoiding local packages as 'venmic_prefer_remote' is ON")
+endif()
+
+set(CPM_DOWNLOAD_ALL ${venmic_prefer_remote})
+
+# --------------------------------------------------------------------------------------------------------
+# CMake options
+# --------------------------------------------------------------------------------------------------------
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # --------------------------------------------------------------------------------------------------------
 # Create library
