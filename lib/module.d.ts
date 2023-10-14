@@ -1,6 +1,14 @@
+export class Props
+{
+    "application.process.binary": string;
+    "application.process.id": string;
+    "node.name": string;
+}
+
 export class PatchBay
 {
     unlink(): void;
-    list(): string[];
-    link(target: string, mode: "include" | "exclude"): boolean;
+    list(): Props[];
+    
+    link(key: string, value: string, mode: "include" | "exclude"): boolean;
 }

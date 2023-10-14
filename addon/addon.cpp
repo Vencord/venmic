@@ -12,7 +12,7 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
     {
         try
         {
-            vencord::patchbay::get();
+            static_cast<void>(vencord::patchbay::get());
         }
         catch (std::exception &e)
         {
