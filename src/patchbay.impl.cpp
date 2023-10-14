@@ -247,7 +247,8 @@ namespace vencord
             return;
         }
 
-        auto &output = nodes[info.output.node]; // "Output" = the node that is emitting sound
+        // "Output" = the node that is emitting sound
+        auto &output = nodes[info.output.node];
 
         if (output.info.props[target->key] == target->value)
         {

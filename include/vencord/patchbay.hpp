@@ -38,15 +38,16 @@ namespace vencord
         patchbay();
 
       public:
-        std::set<node> list();
-
-      public:
         void link(target target);
 
       public:
         void unlink();
 
       public:
-        static patchbay &get();
+        [[nodiscard]] std::set<node> list();
+
+      public:
+        [[nodiscard]] static patchbay &get();
+        [[nodiscard]] static bool is_pipewire();
     };
 } // namespace vencord
