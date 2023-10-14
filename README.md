@@ -19,7 +19,7 @@ The Rest-Server exposes three simple endpoints
   > List all available applications to share
 
 * (POST) `/link`
-  > Expects a JSON-Body containing the target application, i.e. `{"name": "Firefox", "mode": "include"}`  
+  > Expects a JSON-Body containing the target application, i.e. `{"key": "node.name", "value": "Firefox", "mode": "include"}`  
   > Valid values for `mode` are:
   > * `include`  
   >    The specified application will be shared
