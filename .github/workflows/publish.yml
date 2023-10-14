@@ -17,6 +17,7 @@ jobs:
 
       - name: 🛑 Check Tag
         run: |
+          dnf install -y jq
           pkg_version="v$(jq -r .version < package.json)"
           if [[ "${{ github.ref_name }}" != "$pkg_version" ]]; then
               echo "Tag ${{ github.ref_name }} does not match package.json version $pkg_version" >&2
@@ -41,18 +42,10 @@ jobs:
           run_install: false
 
       - name: 🔨 Build
-        run: |
-          cmake -B build
-          cmake --build build
-
-      - name: 🚀 Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: server-arch
-          path: build/server
-
-      - name: 🔨 Build
         run: "pnpm install"
+
+      - name: 🛠️ Prepare Prebuilds
+        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7
 
       - name: 🛒 Publish
         run: pnpm publish
