@@ -16,7 +16,7 @@ template <>
 struct glz::meta<vencord::target>
 {
     using T                     = vencord::target;
-    static constexpr auto value = object("name", &T::name, "mode", &T::mode);
+    static constexpr auto value = object("key", &T::key, "value", &T::value, "mode", &T::mode);
 };
 
 int main(int argc, char **args)

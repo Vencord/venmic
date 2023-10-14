@@ -30,7 +30,14 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
 
         auto convert = [&](const auto &item)
         {
-            return Napi::String::New(env, item);
+            auto rtn = Napi::Object::New(env);
+
+            for (const auto &[key, value] : item)
+            {
+                rtn.Set(key, Napi::String::New(env, value));
+            }
+
+            return rtn;
         };
         auto add = [&](const auto &item)
         {
@@ -49,14 +56,15 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
     {
         auto env = info.Env();
 
-        if (info.Length() != 2 || !info[0].IsString() || !info[1].IsString())
+        if (info.Length() != 3 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
         {
-            Napi::Error::New(env, "[venmic] expected two string arguments").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected three string arguments").ThrowAsJavaScriptException();
             return Napi::Boolean::New(env, false);
         }
 
-        auto target = static_cast<std::string>(info[0].ToString());
-        auto mode   = static_cast<std::string>(info[1].ToString());
+        auto key   = static_cast<std::string>(info[0].ToString());
+        auto value = static_cast<std::string>(info[1].ToString());
+        auto mode  = static_cast<std::string>(info[2].ToString());
 
         if (mode != "include" && mode != "exclude")
         {
@@ -67,7 +75,8 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         }
 
         vencord::patchbay::get().link({
-            target,
+            key,
+            value,
             mode == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
         });
 
