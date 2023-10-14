@@ -1,4 +1,5 @@
 #include "patchbay.impl.hpp"
+#include <dlfcn.h>
 
 namespace vencord
 {
@@ -28,6 +29,13 @@ namespace vencord
 
         if (!instance)
         {
+            auto handle = dlopen("libpipewire-0.3.so", RTLD_LAZY);
+            if (!handle)
+            {
+                throw std::runtime_error("libpipewire is not available");
+            }
+            dlclose(handle);
+
             instance = std::unique_ptr<patchbay>(new patchbay);
         }
 
