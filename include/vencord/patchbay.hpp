@@ -1,5 +1,6 @@
 #pragma once
 #include <set>
+#include <map>
 #include <memory>
 #include <string>
 #include <cstdint>
@@ -14,9 +15,14 @@ namespace vencord
 
     struct target
     {
-        std::string name;
+        std::string key;
+        std::string value;
+
+      public:
         target_mode mode;
     };
+
+    using node = std::map<std::string, std::string>;
 
     class patchbay
     {
@@ -32,15 +38,16 @@ namespace vencord
         patchbay();
 
       public:
-        std::set<std::string> list();
-
-      public:
         void link(target target);
 
       public:
         void unlink();
 
       public:
-        static patchbay &get();
+        [[nodiscard]] std::set<node> list();
+
+      public:
+        [[nodiscard]] static patchbay &get();
+        [[nodiscard]] static bool has_pipewire();
     };
 } // namespace vencord

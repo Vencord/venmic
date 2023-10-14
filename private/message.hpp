@@ -30,5 +30,5 @@ namespace vencord
     struct target;
 
     using pw_recipe = pw::recipe<list_nodes, target, unset_target, quit>;
-    using cr_recipe = cr::recipe<std::set<std::string>, ready>;
+    using cr_recipe = cr::recipe<std::set<node>, ready>;
 } // namespace vencord

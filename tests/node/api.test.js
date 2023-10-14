@@ -7,15 +7,17 @@ try
 
     assert(Array.isArray(patchbay.list()));
 
-    assert.throws(() => patchbay.link(10), /expected two string/ig);
-    assert.throws(() => patchbay.link(10, 10), /expected two string/ig);
-    assert.throws(() => patchbay.link("Firefox", "gibberish"), /expected mode/ig);
+    assert.throws(() => patchbay.link(10), /expected three string/ig);
+    assert.throws(() => patchbay.link(10, 10), /expected three string/ig);
+    assert.throws(() => patchbay.link("node.name", "Firefox", "gibberish"), /expected mode/ig);
 
-    assert.doesNotThrow(() => patchbay.link("Firefox", "include"));
+    assert.doesNotThrow(() => patchbay.link("node.name", "Firefox", "include"));
     assert.doesNotThrow(() => patchbay.unlink());
 }
 catch (error)
 {
     console.warn("No PipeWire Server available");
-    assert.throws(() => new venmic.PatchBay(), /failed to create patchbay instance/ig);
+
+    assert(!venmic.PatchBay.hasPipeWire());
+    assert.throws(() => new venmic.PatchBay(), /(failed to create patchbay)|(not running pipewire)/ig);
 }
