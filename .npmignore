@@ -1,0 +1,8 @@
+node_modules
+.github
+server
+tests
+
+.gitignore
+.clang-*
+.eslint*
