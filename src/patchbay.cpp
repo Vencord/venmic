@@ -30,12 +30,17 @@ namespace vencord
     {
         static std::unique_ptr<patchbay> instance;
 
-        if (!instance)
+        if (instance)
         {
-            instance = std::unique_ptr<patchbay>(new patchbay);
+            return *instance;
         }
 
-        return *instance;
+        if (!has_pipewire())
+        {
+            throw std::runtime_error("Not running PipeWire");
+        }
+
+        return *(instance = std::unique_ptr<patchbay>(new patchbay));
     }
 
     bool patchbay::has_pipewire()
