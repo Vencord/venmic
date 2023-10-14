@@ -7,8 +7,10 @@ export interface Props
 
 export class PatchBay
 {
-    unlink(): void;
     list(): Props[];
     
-    link(key: string, value: string, mode: "include" | "exclude"): boolean;
+    unlink(): void;
+    link(key: keyof Props, value: string, mode: "include" | "exclude"): boolean;
+
+    static hasPipeWire(): boolean;
 }

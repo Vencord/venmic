@@ -48,6 +48,6 @@ namespace vencord
 
       public:
         [[nodiscard]] static patchbay &get();
-        [[nodiscard]] static bool is_pipewire();
+        [[nodiscard]] static bool has_pipewire();
     };
 } // namespace vencord

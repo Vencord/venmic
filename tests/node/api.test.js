@@ -17,5 +17,7 @@ try
 catch (error)
 {
     console.warn("No PipeWire Server available");
-    assert.throws(() => new venmic.PatchBay(), /(failed to create patchbay)|(is not pipewire)/ig);
+
+    assert(!venmic.PatchBay.hasPipeWire());
+    assert.throws(() => new venmic.PatchBay(), /failed to create patchbay/ig);
 }

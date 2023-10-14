@@ -89,6 +89,11 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         return {};
     }
 
+    static Napi::Value has_pipewire(const Napi::CallbackInfo &info)
+    {
+        return Napi::Boolean::New(info.Env(), vencord::patchbay::has_pipewire());
+    }
+
   public:
     static Napi::Object Init(Napi::Env env, Napi::Object exports)
     {
@@ -99,6 +104,7 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
                                     InstanceMethod<&patchbay::link>("link", attributes),
                                     InstanceMethod<&patchbay::list>("list", attributes),
                                     InstanceMethod<&patchbay::unlink>("unlink", attributes),
+                                    StaticMethod<&patchbay::has_pipewire>("hasPipeWire", attributes),
                                 });
 
         auto *constructor = new Napi::FunctionReference{Napi::Persistent(func)};

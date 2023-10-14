@@ -31,18 +31,13 @@ namespace vencord
 
         if (!instance)
         {
-            if (!is_pipewire())
-            {
-                throw std::runtime_error("Audio Server is not PipeWire");
-            }
-
             instance = std::unique_ptr<patchbay>(new patchbay);
         }
 
         return *instance;
     }
 
-    bool patchbay::is_pipewire()
+    bool patchbay::has_pipewire()
     {
         auto *loop    = pa_mainloop_new();
         auto *context = pa_context_new(pa_mainloop_get_api(loop), "venmic-info");
