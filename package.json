@@ -1,5 +1,6 @@
 {
   "name": "@vencord/venmic",
+  "private": false,
   "license": "MIT",
   "author": {
     "name": "Curve",
