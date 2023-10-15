@@ -44,6 +44,9 @@ jobs:
       - name: 🔨 Build
         run: "pnpm install"
 
+      - name: 🛠️ Prepare Prebuilds
+        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7
+
       - name: 🛒 Publish
         run: pnpm publish
         env:

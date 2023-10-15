@@ -6,6 +6,3 @@ tests
 .gitignore
 .clang-*
 .eslint*
-
-build/*
-!build/Release
