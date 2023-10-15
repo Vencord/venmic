@@ -6,7 +6,7 @@
     "name": "Curve",
     "url": "https://github.com/Curve"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "./lib/index.js",
   "types": "./lib/module.d.ts",
   "scripts": {
