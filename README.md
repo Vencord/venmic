@@ -47,7 +47,7 @@ The Rest-Server exposes three simple endpoints
 
 This project heavily relies on the following projects:
 
-* [Soundux/rohrkabel](https://github.com/Soundux/rohrkabel/)
+* [Curve/rohrkabel](https://github.com/Curve/rohrkabel/)
 * [cmake-js](https://github.com/cmake-js/cmake-js)
 
 Kudos to all the developers involved, keep up the great work!
