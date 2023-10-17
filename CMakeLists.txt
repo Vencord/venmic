@@ -71,8 +71,8 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        2.3
-  GIT_REPOSITORY "https://github.com/Soundux/rohrkabel"
+  VERSION        2.4
+  GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
 CPMFindPackage(
@@ -83,8 +83,8 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           channel
-  VERSION        2.1
-  GIT_REPOSITORY "https://github.com/Soundux/channel"
+  VERSION        2.2
+  GIT_REPOSITORY "https://github.com/Curve/channel"
 )
 
 CPMFindPackage(
@@ -99,7 +99,7 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC soundux::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta)
+target_link_libraries(${PROJECT_NAME} PUBLIC cr::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta)
 
 # --------------------------------------------------------------------------------------------------------
 # Custom Find-Package configurations
