@@ -350,8 +350,8 @@ namespace vencord
     // NOLINTNEXTLINE(*-value-param)
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
     {
-        created.clear();
         target.reset();
+        created.clear();
 
         mic.reset();
     }
