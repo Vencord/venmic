@@ -312,6 +312,8 @@ namespace vencord
             return rtn;
         };
 
+        core->update();
+
         auto rtn = nodes                               //
                    | ranges::views::filter(desireable) //
                    | ranges::views::filter(can_output) //
@@ -325,6 +327,11 @@ namespace vencord
     // NOLINTNEXTLINE(*-value-param)
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, vencord::target req)
     {
+        if (!mic)
+        {
+            create_mic();
+        }
+
         created.clear();
         target.emplace(std::move(req));
 
@@ -343,8 +350,10 @@ namespace vencord
     // NOLINTNEXTLINE(*-value-param)
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
     {
-        target.reset();
         created.clear();
+        target.reset();
+
+        mic.reset();
     }
 
     template <>
@@ -377,7 +386,7 @@ namespace vencord
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });
         listener.on<pw::registry_event::global>([this](const auto &global) { global_added(global); });
 
-        create_mic();
+        core->update();
 
         sender.send(ready{});
 
