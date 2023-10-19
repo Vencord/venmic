@@ -38,6 +38,11 @@ int main(int argc, char **args)
         }
     }
 
+    std::cout << "DISCLAIMER: This program is not intended for standalone usage. You need a modified discord client "
+                 "that makes use of this."
+              << std::endl
+              << std::endl;
+
     std::cout << std::format("Running on port {}\n", port);
 
     httplib::Server server;
