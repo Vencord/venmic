@@ -8,6 +8,9 @@ venmic - screenshare support for pipewire
 
 </div>
 
+> [!WARNING]  
+> This project is not intended for standalone usage. You need a modified discord client that makes use of this.
+
 ## 📖 Usage
 
 _venmic_ can be used as node-module or as a local rest-server.
