@@ -386,8 +386,6 @@ namespace vencord
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });
         listener.on<pw::registry_event::global>([this](const auto &global) { global_added(global); });
 
-        core->update();
-
         sender.send(ready{});
 
         while (!should_exit)
