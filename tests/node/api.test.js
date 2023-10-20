@@ -6,12 +6,16 @@ try
     const patchbay = new venmic.PatchBay();
 
     assert(Array.isArray(patchbay.list()));
+    assert(Array.isArray(patchbay.list(["node.name"])));
 
-    assert.throws(() => patchbay.link(10), /expected three string/ig);
-    assert.throws(() => patchbay.link(10, 10), /expected three string/ig);
-    assert.throws(() => patchbay.link("node.name", "Firefox", "gibberish"), /expected mode/ig);
+    assert.throws(() => patchbay.list({}), /expected array/ig);
+    assert.throws(() => patchbay.list([10]), /expected item to be string/ig);
 
-    assert.doesNotThrow(() => patchbay.link("node.name", "Firefox", "include"));
+    assert.throws(() => patchbay.link(10), /expected link object/ig);
+    assert.throws(() => patchbay.link({ a: "A", b: "B", c: "C" }), /expected keys/ig);
+    assert.throws(() => patchbay.link({ key: "node.name", value: "Firefox", mode: "gibberish" }), /expected mode/ig);
+
+    assert.doesNotThrow(() => patchbay.link({ key: "node.name", value: "Firefox", mode: "include" }));
     assert.doesNotThrow(() => patchbay.unlink());
 }
 catch (error)

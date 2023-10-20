@@ -18,8 +18,9 @@ _venmic_ can be used as node-module or as a local rest-server.
 The node-module is intended for internal usage by [Vesktop](https://github.com/Vencord/Vesktop).
 
 The Rest-Server exposes three simple endpoints
-* (GET) `/list`
-  > List all available applications to share
+* (POST) `/list`
+  > List all available applications to share.  
+  > You can optionally define a JSON-Body containing all the props the listed nodes should have (i.e. `["node.name"]`).
 
 * (POST) `/link`
   > Expects a JSON-Body containing the target application, i.e. `{"key": "node.name", "value": "Firefox", "mode": "include"}`  

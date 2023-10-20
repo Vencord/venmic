@@ -12,6 +12,7 @@ namespace vencord
 {
     struct list_nodes
     {
+        std::set<std::string> props;
     };
 
     struct unset_target

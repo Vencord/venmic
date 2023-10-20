@@ -20,9 +20,9 @@ namespace vencord
         m_impl->sender->send(unset_target{});
     }
 
-    std::set<node> patchbay::list()
+    std::set<node> patchbay::list(std::set<std::string> props)
     {
-        m_impl->sender->send(list_nodes{});
+        m_impl->sender->send(list_nodes{std::move(props)});
         return m_impl->receiver->recv_as<std::set<node>>();
     }
 

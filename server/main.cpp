@@ -47,12 +47,14 @@ int main(int argc, char **args)
 
     httplib::Server server;
 
-    server.Get("/list",
-               [](const auto &, auto &response)
-               {
-                   auto data = glz::write_json(patchbay::get().list());
-                   response.set_content(data, "application/json");
-               });
+    server.Post("/list",
+                [](const auto &req, auto &response)
+                {
+                    auto props = glz::read_json<std::set<std::string>>(req.body);
+                    auto data  = glz::write_json(patchbay::get().list(props.value_or(std::set<std::string>{})));
+
+                    response.set_content(data, "application/json");
+                });
 
     server.Post("/link",
                 [](const auto &req, auto &response)

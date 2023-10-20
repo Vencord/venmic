@@ -25,7 +25,33 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
     {
         auto env = info.Env();
 
-        auto list = vencord::patchbay::get().list();
+        std::set<std::string> props{};
+
+        if (info.Length() == 1)
+        {
+            if (!info[0].IsArray())
+            {
+                Napi::Error::New(env, "[venmic] expected array").ThrowAsJavaScriptException();
+                return {};
+            }
+
+            auto array = info[0].As<Napi::Array>();
+
+            for (auto i = 0u; array.Length() > i; i++)
+            {
+                auto item = array.Get(i);
+
+                if (!item.IsString())
+                {
+                    Napi::Error::New(env, "[venmic] expected item to be string").ThrowAsJavaScriptException();
+                    return {};
+                }
+
+                props.emplace(item.ToString());
+            }
+        }
+
+        auto list = vencord::patchbay::get().list(props);
         auto rtn  = Napi::Array::New(env, list.size());
 
         auto convert = [&](const auto &item)
@@ -56,15 +82,29 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
     {
         auto env = info.Env();
 
-        if (info.Length() != 3 || !info[0].IsString() || !info[1].IsString() || !info[2].IsString())
+        if (info.Length() != 1 || !info[0].IsObject())
         {
-            Napi::Error::New(env, "[venmic] expected three string arguments").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected link object").ThrowAsJavaScriptException();
             return Napi::Boolean::New(env, false);
         }
 
-        auto key   = static_cast<std::string>(info[0].ToString());
-        auto value = static_cast<std::string>(info[1].ToString());
-        auto mode  = static_cast<std::string>(info[2].ToString());
+        auto data = info[0].ToObject();
+
+        if (!data.Has("key") || !data.Has("value") || !data.Has("mode"))
+        {
+            Napi::Error::New(env, "[venmic] expected keys 'key', 'value' and 'mode'").ThrowAsJavaScriptException();
+            return Napi::Boolean::New(env, false);
+        }
+
+        if (!data.Get("key").IsString() || !data.Get("value").IsString() || !data.Get("mode").IsString())
+        {
+            Napi::Error::New(env, "[venmic] expected values to be strings").ThrowAsJavaScriptException();
+            return Napi::Boolean::New(env, false);
+        }
+
+        auto key   = static_cast<std::string>(data.Get("key").ToString());
+        auto value = static_cast<std::string>(data.Get("value").ToString());
+        auto mode  = static_cast<std::string>(data.Get("mode").ToString());
 
         if (mode != "include" && mode != "exclude")
         {

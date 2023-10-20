@@ -44,7 +44,7 @@ namespace vencord
         void unlink();
 
       public:
-        [[nodiscard]] std::set<node> list();
+        [[nodiscard]] std::set<node> list(std::set<std::string> props);
 
       public:
         [[nodiscard]] static patchbay &get();

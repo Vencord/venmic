@@ -87,12 +87,7 @@ namespace vencord
         {
             auto matching_channel = [&](auto &item)
             {
-                if (target_ports.size() == 1)
-                {
-                    return true;
-                }
-
-                return item.props["audio.channel"] == port.props["audio.channel"];
+                return target_ports.size() == 1 || item.props["audio.channel"] == port.props["audio.channel"];
             };
 
             auto others = source_ports | ranges::views::filter(matching_channel);
@@ -209,7 +204,7 @@ namespace vencord
             auto parent = std::stoull(props["node.id"]);
             nodes[parent].ports.emplace_back(port->info());
 
-            //? Yes this belongs here, as the node is created **before** the ports.
+            //? Yes. This belongs here, as the node is created **before** the ports.
             on_node(parent);
         }
 
@@ -288,28 +283,22 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive(cr_recipe::sender sender, [[maybe_unused]] list_nodes)
+    void patchbay::impl::receive(cr_recipe::sender &sender, const list_nodes &req)
     {
-        static std::set<std::string> desired_props{"application.process.binary", "application.process.id", "node.name"};
+        static const std::set<std::string> required{"application.name", "node.name"};
+        const auto &props = req.props.empty() ? required : req.props;
 
         auto desireable = [&](auto &item)
         {
-            return ranges::all_of(desired_props, [&](const auto &key) { return item.second.info.props.contains(key); });
+            return ranges::all_of(props, [&](const auto &key) { return item.second.info.props.contains(key); });
         };
         auto can_output = [](const auto &item)
         {
             return item.second.info.output.max > 0;
         };
-        auto to_node = [](auto &item)
+        auto to_node = [&](auto &item)
         {
-            node rtn;
-
-            for (const auto &key : desired_props)
-            {
-                rtn[key] = item.second.info.props[key];
-            }
-
-            return rtn;
+            return node{item.second.info.props};
         };
 
         core->update();
@@ -324,8 +313,7 @@ namespace vencord
     }
 
     template <>
-    // NOLINTNEXTLINE(*-value-param)
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, vencord::target req)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, const vencord::target &req)
     {
         if (!mic)
         {
@@ -333,7 +321,7 @@ namespace vencord
         }
 
         created.clear();
-        target.emplace(std::move(req));
+        target.emplace(req);
 
         for (const auto &[id, info] : nodes)
         {
@@ -347,8 +335,7 @@ namespace vencord
     }
 
     template <>
-    // NOLINTNEXTLINE(*-value-param)
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] unset_target)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] const unset_target &)
     {
         target.reset();
         created.clear();
@@ -357,8 +344,7 @@ namespace vencord
     }
 
     template <>
-    // NOLINTNEXTLINE(*-value-param)
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender, [[maybe_unused]] quit)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] const quit &)
     {
         core->context()->loop()->quit();
     }
@@ -380,7 +366,7 @@ namespace vencord
             return;
         }
 
-        receiver.attach(loop, [this, sender]<typename T>(T &&message) { receive(sender, std::forward<T>(message)); });
+        receiver.attach(loop, [this, &sender]<typename T>(T &&message) { receive(sender, std::forward<T>(message)); });
 
         auto listener = registry->listen();
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });

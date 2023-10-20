@@ -74,7 +74,7 @@ namespace vencord
 
       private:
         template <typename T>
-        void receive(cr_recipe::sender, T);
+        void receive(cr_recipe::sender &, const T &);
 
       private:
         void start(pw_recipe::receiver, cr_recipe::sender);

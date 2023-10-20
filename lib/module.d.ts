@@ -1,16 +1,11 @@
-export interface Props
-{
-    "application.process.binary": string;
-    "application.process.id": string;
-    "node.name": string;
-}
+type DefaultProps = 'node.name' | 'application.name';
 
 export class PatchBay
 {
-    list(): Props[];
-    
     unlink(): void;
-    link(key: keyof Props, value: string, mode: "include" | "exclude"): boolean;
+    
+    list<T extends string = DefaultProps>(props?: T[]): Record<T, string>;
+    link(data: {key: string, value: string, mode: "include" | "exclude"}): boolean;
 
     static hasPipeWire(): boolean;
 }
