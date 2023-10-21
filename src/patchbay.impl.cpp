@@ -290,7 +290,7 @@ namespace vencord
 
         auto desireable = [&](auto &item)
         {
-            return ranges::all_of(props, [&](const auto &key) { return item.second.info.props.contains(key); });
+            return ranges::all_of(props, [&](const auto &key) { return !item.second.info.props[key].empty(); });
         };
         auto can_output = [](const auto &item)
         {

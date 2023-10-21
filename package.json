@@ -1,11 +1,17 @@
 {
   "name": "@vencord/venmic",
   "description": "linux audio screenshare for discord (or any electron app) via pipewire",
-  "keywords": ["pipewire", "electron", "screenshare", "capturer", "audio"],
+  "keywords": [
+    "pipewire",
+    "electron",
+    "screenshare",
+    "capturer",
+    "audio"
+  ],
   "private": false,
   "license": "MIT",
   "author": "Curve (https://github.com/Curve)",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "main": "./lib/index.js",
   "types": "./lib/module.d.ts",
   "scripts": {
