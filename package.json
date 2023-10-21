@@ -1,11 +1,10 @@
 {
   "name": "@vencord/venmic",
+  "description": "linux audio screenshare for discord (or any electron app) via pipewire",
+  "keywords": ["pipewire", "electron", "screenshare", "capturer", "audio"],
   "private": false,
   "license": "MIT",
-  "author": {
-    "name": "Curve",
-    "url": "https://github.com/Curve"
-  },
+  "author": "Curve (https://github.com/Curve)",
   "version": "1.4.0",
   "main": "./lib/index.js",
   "types": "./lib/module.d.ts",
@@ -15,6 +14,9 @@
     "cpcmds": "cmake-js configure --CDvenmic_addon=ON --CDCMAKE_EXPORT_COMPILE_COMMANDS=ON",
     "install": "pkg-prebuilds-verify ./lib/options.js || cmake-js compile --CDvenmic_addon=ON"
   },
+  "os": [
+    "linux"
+  ],
   "binary": {
     "napi_versions": [
       7
@@ -36,5 +38,13 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/Vencord/venmic/issues"
+  },
+  "homepage": "https://github.com/Vencord/venmic",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vencord/venmic.git"
   }
 }
