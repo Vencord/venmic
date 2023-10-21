@@ -4,7 +4,7 @@ export class PatchBay
 {
     unlink(): void;
     
-    list<T extends string = DefaultProps>(props?: T[]): Record<T, string>;
+    list<T extends string = DefaultProps>(props?: T[]): Record<T, string>[];
     link(data: {key: string, value: string, mode: "include" | "exclude"}): boolean;
 
     static hasPipeWire(): boolean;
