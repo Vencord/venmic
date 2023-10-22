@@ -9,7 +9,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    container: fedora:latest
+    container: fedora:37
 
     steps:
       - name: 📥 Checkout
