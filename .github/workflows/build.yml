@@ -5,9 +5,9 @@ on:
 name: 🏗️ Build
 
 jobs:
-  build-fedora37:
+  build-fedora:
     runs-on: ubuntu-latest
-    container: fedora:37
+    container: fedora:38
 
     steps:
       - name: 📥 Checkout
@@ -51,45 +51,31 @@ jobs:
           name: addon-x86-64
           path: build/Release
 
-  build-fedora37-arm:
+  build-fedora-arm:
     runs-on: ubuntu-latest
-    container: arm64v8/fedora:37
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
-      - name: 👷 Build Dependencies
-        run: |
-          dnf install -y make automake gcc gcc-c++ kernel-devel cmake git
-          dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
+      - name: 🤖 Setup Qemu
+        uses: docker/setup-qemu-action@v2
 
-      - name: 🔨 Build Server
-        run: |
-          cmake -B build
-          cmake --build build
-
-      - name: 🚀 Upload Server
-        uses: actions/upload-artifact@v3
+      - name: 🤿 Build with Qemu
+        uses: addnab/docker-run-action@v3
         with:
-          name: server-armv8
-          path: build/server
+          image: arm64v8/fedora:37
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            dnf install -y make automake gcc gcc-c++ kernel-devel cmake git nodejs
+            dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
 
-      - name: 🍃 Install Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+            curl -fsSL https://get.pnpm.io/install.sh | sh -
 
-      - name: 🍃 Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+            cd /work
 
-      - name: 🔨 Build Addon
-        run: |
-          rm -rf build
-          pnpm install
+            rm -rf build
+            pnpm install
 
       - name: 🚀 Upload Addon
         uses: actions/upload-artifact@v3
