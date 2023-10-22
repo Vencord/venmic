@@ -64,7 +64,7 @@ jobs:
       - name: 🤿 Build with Qemu
         uses: addnab/docker-run-action@v3
         with:
-          image: arm64v8/fedora:37
+          image: arm64v8/fedora:38
           options: -v ${{ github.workspace }}:/work
           run: |
             dnf install -y make automake gcc gcc-c++ kernel-devel cmake git nodejs
@@ -74,7 +74,6 @@ jobs:
 
             cd /work
 
-            rm -rf build
             pnpm install
 
       - name: 🚀 Upload Addon
