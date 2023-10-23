@@ -83,6 +83,7 @@ jobs:
   publish:
     needs: [build-arm64, build-x86_64]
     runs-on: ubuntu-latest
+    container: fedora:38
 
     steps:
       - name: 📥 Checkout
