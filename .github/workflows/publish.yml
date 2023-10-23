@@ -51,6 +51,13 @@ jobs:
         with:
           platforms: "arm64"
 
+      - name: 🦥 Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          key: venmic-deps-cache
+          path: |
+            build/_deps
+
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
         with:
