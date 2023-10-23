@@ -57,6 +57,7 @@ jobs:
           key: venmic-deps-cache
           path: |
             build/_deps
+            node_modules
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
