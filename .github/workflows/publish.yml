@@ -64,7 +64,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           options: -v ${{ github.workspace }}:/work --platform linux/arm64
-          image: ghcr.io/vencord/venmic-builder-x86_64:latest
+          image: ghcr.io/vencord/venmic-builder-arm64:latest
           registry: gcr.io
           shell: bash
           run: |
