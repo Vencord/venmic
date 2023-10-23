@@ -11,86 +11,18 @@ on:
 name: 🚀 Publish Package
 
 jobs:
-  build-container:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v3
-
-      - name: 🤖 Setup Qemu
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: "arm64"
-
-      - name: 🐋 Setup Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: 🦥 Cache Image
-        id: cache-image
-        uses: actions/cache@v3
-        with:
-          key: venmic-builder-cache
-          path: |
-            docker/venmic-builder-x86_64.tar
-            docker/venmic-builder-arm64.tar
-
-      - name: 🏗️ Build Image
-        if: steps.cache-image.outputs.cache-hit != 'true'
-        run: |
-          cd docker
-
-          docker buildx build --platform=linux/amd64 --tag venmic-builder-x86_64 --load .
-          docker save venmic-builder-x86_64 > venmic-builder-x86_64.tar
-
-          docker buildx build --platform=linux/arm64 --tag venmic-builder-arm64 --load .
-          docker save venmic-builder-arm64 > venmic-builder-arm64.tar
-
-      - name: 🔐 Login
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: ♻️ Publish Images
-        run: |
-          docker load < docker/venmic-builder-x86_64.tar
-          docker load < docker/venmic-builder-arm64.tar
-
-          docker image tag venmic-builder-arm64 ghcr.io/vencord/venmic-builder-arm64
-          docker image tag venmic-builder-x86_64 ghcr.io/vencord/venmic-builder-x86_64
-
-          docker push ghcr.io/vencord/venmic-builder-x86_64:latest
-          docker push ghcr.io/vencord/venmic-builder-arm64:latest
-
   build-x86_64:
-    needs: build-container
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v3
-
-      - name: 🦥 Pull Image
-        uses: actions/cache/restore@v3
-        id: cache-container
-        with:
-          fail-on-cache-miss: true
-          key: venmic-builder-cache
-          path: |
-            docker/venmic-builder-x86_64.tar
-            docker/venmic-builder-arm64.tar
-
-      - name: 🐋 Load Container
-        run: |
-          docker load < docker/venmic-builder-x86_64.tar
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/amd64
-          image: venmic-builder-x86_64
+          image: ghcr.io/vencord/venmic-builder-x86_64:latest
           shell: bash
           run: |
             source /root/.bashrc
@@ -105,37 +37,22 @@ jobs:
           path: build/Release
 
   build-arm64:
-    needs: build-container
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
-      - name: 🦥 Pull Image
-        uses: actions/cache/restore@v3
-        id: cache-container
-        with:
-          fail-on-cache-miss: true
-          key: venmic-builder-cache
-          path: |
-            docker/venmic-builder-x86_64.tar
-            docker/venmic-builder-arm64.tar
-
       - name: 🤖 Setup Qemu
         uses: docker/setup-qemu-action@v3
         with:
           platforms: "arm64"
 
-      - name: 🐋 Load Container
-        run: |
-          docker load < docker/venmic-builder-arm64.tar
-
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/arm64
-          image: venmic-builder-arm64
+          image: ghcr.io/vencord/venmic-builder-arm64:latest
           shell: bash
           run: |
             source /root/.bashrc
