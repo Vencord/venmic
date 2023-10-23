@@ -32,10 +32,10 @@ jobs:
         with:
           key: venmic-builder-cache
           path: |
-            venmic-builder-x86_64.tar
-            venmic-builder-arm64.tar
+            docker/venmic-builder-x86_64.tar
+            docker/venmic-builder-arm64.tar
 
-      - name: 🏗️ Build x86_64 Image
+      - name: 🏗️ Build Image
         if: steps.cache-image.outputs.cache-hit != 'true'
         run: |
           cd docker
@@ -61,11 +61,11 @@ jobs:
           fail-on-cache-miss: true
           key: venmic-builder-cache
           path: |
-            venmic-builder-x86_64.tar
+            docker/venmic-builder-x86_64.tar
 
       - name: 🐋 Load Container
         run: |
-          docker load < venmic-builder-x86_64.tar
+          docker load < docker/venmic-builder-x86_64.tar
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
@@ -98,7 +98,7 @@ jobs:
           fail-on-cache-miss: true
           key: venmic-builder-cache
           path: |
-            venmic-builder-arm64.tar
+            docker/venmic-builder-arm64.tar
 
       - name: 🤖 Setup Qemu
         uses: docker/setup-qemu-action@v3
@@ -107,7 +107,7 @@ jobs:
 
       - name: 🐋 Load Container
         run: |
-          docker load < venmic-builder-arm64.tar
+          docker load < docker/venmic-builder-arm64.tar
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
