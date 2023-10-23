@@ -303,9 +303,20 @@ namespace vencord
 
         core->update();
 
-        auto rtn = nodes                               //
-                   | ranges::views::filter(desireable) //
-                   | ranges::views::filter(can_output) //
+        auto filtered = nodes                               //
+                        | ranges::views::filter(desireable) //
+                        | ranges::views::filter(can_output);
+
+        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this. Thus we
+        // re-bind them.
+
+        for (auto &[id, node] : filtered)
+        {
+            auto updated    = registry->bind<pw::node>(id).get();
+            node.info.props = updated->info().props;
+        }
+
+        auto rtn = filtered                            //
                    | ranges::views::transform(to_node) //
                    | ranges::to<std::set>;
 
