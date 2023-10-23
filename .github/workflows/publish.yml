@@ -58,8 +58,8 @@ jobs:
           docker load < docker/venmic-builder-x86_64.tar
           docker load < docker/venmic-builder-arm64.tar
 
-          docker push ghcr.io/Vencord/venmic-builder-x86_64:latest
-          docker push ghcr.io/Vencord/venmic-builder-arm64:latest
+          docker push ghcr.io/vencord/venmic-builder-x86_64:latest
+          docker push ghcr.io/vencord/venmic-builder-arm64:latest
 
   build-x86_64:
     needs: build-container
