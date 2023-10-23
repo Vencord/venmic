@@ -46,11 +46,20 @@ jobs:
           docker buildx build --platform=linux/arm64 --tag venmic-builder-arm64 --load .
           docker save venmic-builder-arm64 > venmic-builder-arm64.tar
 
-      - name: ♻️ Upload Images
-        uses: actions/upload-artifact@v3
+      - name: 🔐 Login
+        uses: docker/login-action@v3
         with:
-          name: addon-x86_64
-          path: docker/*.tar
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ♻️ Publish Images
+        run: |
+          docker load < docker/venmic-builder-x86_64.tar
+          docker load < docker/venmic-builder-arm64.tar
+
+          docker push ghcr.io/Vencord/venmic-builder-x86_64:latest
+          docker push ghcr.io/Vencord/venmic-builder-arm64:latest
 
   build-x86_64:
     needs: build-container
