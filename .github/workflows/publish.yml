@@ -62,6 +62,7 @@ jobs:
           key: venmic-builder-cache
           path: |
             docker/venmic-builder-x86_64.tar
+            docker/venmic-builder-arm64.tar
 
       - name: 🐋 Load Container
         run: |
@@ -98,6 +99,7 @@ jobs:
           fail-on-cache-miss: true
           key: venmic-builder-cache
           path: |
+            docker/venmic-builder-x86_64.tar
             docker/venmic-builder-arm64.tar
 
       - name: 🤖 Setup Qemu
