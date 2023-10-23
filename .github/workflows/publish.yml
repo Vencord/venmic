@@ -46,6 +46,12 @@ jobs:
           docker buildx build --platform=linux/arm64 --tag venmic-builder-arm64 --load .
           docker save venmic-builder-arm64 > venmic-builder-arm64.tar
 
+      - name: ♻️ Upload Images
+        uses: actions/upload-artifact@v3
+        with:
+          name: addon-x86_64
+          path: docker/*.tar
+
   build-x86_64:
     needs: build-container
     runs-on: ubuntu-latest
@@ -75,6 +81,8 @@ jobs:
           image: venmic-builder-x86_64
           shell: bash
           run: |
+            source /root/.bashrc
+
             cd /work
             pnpm install
 
@@ -118,6 +126,8 @@ jobs:
           image: venmic-builder-arm64
           shell: bash
           run: |
+            source /root/.bashrc
+
             cd /work
             pnpm install
 
