@@ -37,7 +37,7 @@ jobs:
         if: steps.cache-image.outputs.cache-hit != 'true'
         run: |
           cd docker
-          docker buildx build --platform=linux/amd64,linux/arm64 --tag venmic-builder .
+          docker buildx build --platform=linux/amd64,linux/arm64 --tag venmic-builder --load .
           docker save > venmic-builder.tar
 
   build-x86_64:
