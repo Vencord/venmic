@@ -1,15 +1,125 @@
-name: Publish Package
-
 on:
   workflow_dispatch:
+    inputs:
+      test:
+        type: boolean
+        description: Skip publishing step
   push:
     tags:
       - "*"
 
+name: 🚀 Publish Package
+
 jobs:
-  publish:
+  build-container:
     runs-on: ubuntu-latest
-    container: fedora:37
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🤖 Setup Qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "arm64"
+
+      - name: 🐋 Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🦥 Cache Image
+        id: cache-image
+        uses: actions/cache@v3
+        with:
+          path: venmic-builder.tar
+          key: venmic-builder-cache
+
+      - name: 🏗️ Build Image
+        if: steps.cache-image.outputs.cache-hit != 'true'
+        run: |
+          cd docker
+          docker buildx build --platform=linux/amd64,linux/arm64 --tag venmic-builder .
+          docker save > venmic-builder.tar
+
+  build-x86_64:
+    needs: build-container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🦥 Pull Image
+        uses: actions/cache/restore@v3
+        id: cache-container
+        with:
+          fail-on-cache-miss: true
+          path: venmic-builder.tar
+          key: venmic-builder-cache
+
+      - name: 🐋 Load Container
+        run: |
+          docker load < venmic-builder.tar
+
+      - name: 🏗️ Build Addon
+        uses: addnab/docker-run-action@v3
+        with:
+          options: -v ${{ github.workspace }}:/work --platform linux/amd64
+          image: venmic-builder
+          shell: bash
+          run: |
+            cd /work
+            pnpm install
+
+      - name: ♻️ Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: addon-x86_64
+          path: build/Release
+
+  build-arm64:
+    needs: build-container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🦥 Pull Image
+        uses: actions/cache/restore@v3
+        id: cache-container
+        with:
+          fail-on-cache-miss: true
+          path: venmic-builder.tar
+          key: venmic-builder-cache
+
+      - name: 🤖 Setup Qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "arm64"
+
+      - name: 🐋 Load Container
+        run: |
+          docker load < venmic-builder.tar
+
+      - name: 🏗️ Build Addon
+        uses: addnab/docker-run-action@v3
+        with:
+          options: -v ${{ github.workspace }}:/work --platform linux/arm64
+          image: venmic-builder
+          shell: bash
+          run: |
+            cd /work
+            pnpm install
+
+      - name: ♻️ Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: addon-arm64
+          path: build/Release
+
+  publish:
+    needs: [build-arm64, build-x86_64]
+    runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout
@@ -36,47 +146,26 @@ jobs:
           version: 8
           run_install: false
 
-      - name: ⏱️ Wait for x86-64 Builds
-        uses: lewagon/wait-on-check-action@v1.3.1
-        with:
-          wait-interval: 600
-          ref: ${{ github.ref }}
-          check-name: "build-fedora37"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 📦 Download Build (x86-64)
-        id: download-artifact
+      - name: 📦 Download Build (x86_64)
         uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build.yml
-          name: addon-x86-64
+          name: addon-x86_64
           path: build/Release
-          allow_forks: false
 
-      - name: 🛠️ Prepare Prebuilds (x86-64)
-        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7
+      - name: 🛠️ Prepare Prebuilds (x86_64)
+        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=x64
 
-      - name: ⏱️ Wait for armv8 Builds
-        uses: lewagon/wait-on-check-action@v1.3.1
-        with:
-          wait-interval: 600
-          ref: ${{ github.ref }}
-          check-name: "build-fedora37-arm"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 📦 Download Build (armv8)
-        id: download-artifact
+      - name: 📦 Download Build (arm64)
         uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build.yml
-          name: addon-armv8
+          name: addon-arm64
           path: build/Release
-          allow_forks: false
 
-      - name: 🛠️ Prepare Prebuilds (armv8)
-        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7
+      - name: 🛠️ Prepare Prebuilds (x86_64)
+        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=arm64
 
       - name: 🛒 Publish
+        if: "${{ github.event.inputs.test != 'true' }}"
         run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

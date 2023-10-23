@@ -1,0 +1,30 @@
+on:
+  push:
+  pull_request:
+
+name: 🏗️ Build Server
+
+jobs:
+  build-fedora:
+    runs-on: ubuntu-latest
+    container: fedora:38
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 👷 Build Dependencies
+        run: |
+          dnf install -y make automake gcc gcc-c++ kernel-devel cmake git
+          dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🚀 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: server-x86-64
+          path: build/server

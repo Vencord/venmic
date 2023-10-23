@@ -1,9 +1,12 @@
 node_modules
-.github
-server
-tests
 build
 
+docker
+server
+tests
+
 .gitignore
+.github
+
 .clang-*
 .eslint*
