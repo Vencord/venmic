@@ -18,11 +18,19 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
+      - name: 🔐 Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/amd64
-          image: ghcr.io/vencord/venmic-builder-x86_64:latest
+          image: vencord/venmic-builder-x86_64:latest
+          registry: gcr.io
           shell: bash
           run: |
             source /root/.bashrc
@@ -48,11 +56,19 @@ jobs:
         with:
           platforms: "arm64"
 
+      - name: 🔐 Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/arm64
-          image: ghcr.io/vencord/venmic-builder-arm64:latest
+          image: vencord/venmic-builder-arm64:latest
+          registry: gcr.io
           shell: bash
           run: |
             source /root/.bashrc
