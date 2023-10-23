@@ -72,7 +72,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/amd64
-          image: venmic-builder
+          image: venmic-builder-x86_64
           shell: bash
           run: |
             cd /work
@@ -115,7 +115,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           options: -v ${{ github.workspace }}:/work --platform linux/arm64
-          image: venmic-builder
+          image: venmic-builder-arm64
           shell: bash
           run: |
             cd /work
