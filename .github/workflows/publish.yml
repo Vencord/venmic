@@ -124,7 +124,7 @@ jobs:
           name: addon-arm64
           path: build/Release
 
-      - name: 🛠️ Prepare Prebuilds (x86_64)
+      - name: 🛠️ Prepare Prebuilds (arm64)
         run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=arm64
 
       - name: 🛒 Publish
