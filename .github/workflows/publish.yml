@@ -111,7 +111,7 @@ jobs:
           run_install: false
 
       - name: 📦 Download Build (x86_64)
-        uses: dawidd6/action-download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: addon-x86_64
           path: build/Release
@@ -120,7 +120,7 @@ jobs:
         run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=x64
 
       - name: 📦 Download Build (arm64)
-        uses: dawidd6/action-download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: addon-arm64
           path: build/Release
