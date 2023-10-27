@@ -1,9 +1,9 @@
 on:
   workflow_dispatch:
     inputs:
-      test:
+      skip-cache:
         type: boolean
-        description: Skip publishing step
+        description: Skip Cache
 
 name: 🐳 Build & Publish Docker Image
 
@@ -33,7 +33,7 @@ jobs:
             docker/venmic-builder-arm64.tar
 
       - name: 🏗️ Build Image
-        if: steps.cache-image.outputs.cache-hit != 'true'
+        if: steps.cache-image.outputs.cache-hit != 'true' && ${{ github.event.inputs.skip-cache != 'true' }}
         run: |
           cd docker
 
