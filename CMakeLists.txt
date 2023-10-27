@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 1.6.0)
+project(venmic LANGUAGES CXX VERSION 1.7.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -8,6 +8,7 @@ project(venmic LANGUAGES CXX VERSION 1.6.0)
 option(venmic_addon         "Build as addon"                            OFF)
 option(venmic_server        "Build as rest server"                       ON)
 option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
+option(venmic_static_cxx    "Static link libstdc++ and libgcc"          OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Addon and Rest-Server are mutually exclusive
@@ -45,6 +46,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS 
 
 if (PROJECT_IS_TOP_LEVEL)
   target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
+endif()
+
+if (venmic_static_cxx)
+  target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++)
 endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-unknown-warning-option -Wno-missing-field-initializers -Wno-cast-function-type)

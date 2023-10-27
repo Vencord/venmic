@@ -4,7 +4,7 @@ FROM fedora:38
 
 # Build dependencies
 
-RUN dnf install -y make automake gcc gcc-c++ kernel-devel cmake git nodejs
+RUN dnf install -y make automake gcc gcc-c++ kernel-devel cmake git nodejs libstdc++-static
 RUN dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
 
 # PNPM
