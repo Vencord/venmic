@@ -31,7 +31,7 @@ jobs:
             source /root/.bashrc
 
             cd /work
-            pnpm run install:static
+            pnpm install --ignore-scripts && pnpm run install:static
 
       - name: ♻️ Upload Artifact
         uses: actions/upload-artifact@v3
@@ -72,7 +72,7 @@ jobs:
             source /root/.bashrc
 
             cd /work
-            pnpm run install:static
+            pnpm install --ignore-scripts && pnpm run install:static
 
       - name: ♻️ Upload Artifact
         uses: actions/upload-artifact@v3
