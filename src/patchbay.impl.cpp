@@ -170,7 +170,7 @@ namespace vencord
                 return;
             }
 
-            speaker = {parsed->name};
+            speaker.emplace(parsed->name);
 
             auto node =
                 ranges::find_if(nodes, [&](auto &item) { return item.second.info.props["node.name"] == parsed->name; });
