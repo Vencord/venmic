@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 1.7.0)
+project(venmic LANGUAGES CXX VERSION 2.0.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -52,7 +52,7 @@ if (venmic_static_cxx)
   target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++)
 endif()
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wno-unknown-warning-option -Wno-missing-field-initializers -Wno-cast-function-type)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-missing-field-initializers -Wno-cast-function-type)
 
 # --------------------------------------------------------------------------------------------------------
 # Add source files
@@ -76,7 +76,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        2.4
+  VERSION        2.5
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
@@ -100,7 +100,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        1.5.2
+  VERSION        1.5.7
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 

@@ -245,7 +245,12 @@ namespace vencord
         // "Output" = the node that is emitting sound
         auto &output = nodes[info.output.node];
 
-        if (output.info.props[target->key] == target->value)
+        auto match = [&](const auto &target)
+        {
+            return output.info.props[target.key] == target.value;
+        };
+
+        if (ranges::any_of(target->props, match))
         {
             return;
         }
@@ -267,7 +272,12 @@ namespace vencord
             return;
         }
 
-        if (nodes[parent].info.props[target->key] != target->value)
+        auto match = [&](const auto &target)
+        {
+            return nodes[parent].info.props[target.key] == target.value;
+        };
+
+        if (!ranges::any_of(target->props, match))
         {
             return;
         }
@@ -283,9 +293,9 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive(cr_recipe::sender &sender, const list_nodes &req)
+    void patchbay::impl::receive(cr_recipe::sender &sender, list_nodes &req)
     {
-        static const std::set<std::string> required{"application.name", "node.name"};
+        static const std::vector<std::string> required{"application.name", "node.name"};
         const auto &props = req.props.empty() ? required : req.props;
 
         auto desireable = [&](auto &item)
@@ -307,8 +317,8 @@ namespace vencord
                         | ranges::views::filter(desireable) //
                         | ranges::views::filter(can_output);
 
-        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this. Thus we
-        // re-bind them.
+        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this (unless we
+        // have them bound constantly). Thus we re-bind them.
 
         for (auto &[id, node] : filtered)
         {
@@ -318,13 +328,13 @@ namespace vencord
 
         auto rtn = filtered                            //
                    | ranges::views::transform(to_node) //
-                   | ranges::to<std::set>;
+                   | ranges::to<std::vector>;
 
         sender.send(rtn);
     }
 
     template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, const vencord::target &req)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, vencord::target &req)
     {
         if (!mic)
         {
@@ -332,7 +342,7 @@ namespace vencord
         }
 
         created.clear();
-        target.emplace(req);
+        target.emplace(std::move(req));
 
         for (const auto &[id, info] : nodes)
         {
@@ -346,7 +356,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] const unset_target &)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] unset_target &)
     {
         target.reset();
         created.clear();
@@ -355,7 +365,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] const quit &)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] quit &)
     {
         core->context()->loop()->quit();
     }
@@ -377,7 +387,7 @@ namespace vencord
             return;
         }
 
-        receiver.attach(loop, [this, &sender]<typename T>(T &&message) { receive(sender, std::forward<T>(message)); });
+        receiver.attach(loop, [this, &sender]<typename T>(T message) { receive(sender, message); });
 
         auto listener = registry->listen();
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });

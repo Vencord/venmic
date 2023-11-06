@@ -13,10 +13,17 @@ struct glz::meta<vencord::target_mode>
 };
 
 template <>
+struct glz::meta<vencord::prop>
+{
+    using T                     = vencord::prop;
+    static constexpr auto value = object("key", &T::key, "value", &T::value);
+};
+
+template <>
 struct glz::meta<vencord::target>
 {
     using T                     = vencord::target;
-    static constexpr auto value = object("key", &T::key, "value", &T::value, "mode", &T::mode);
+    static constexpr auto value = object("mode", &T::mode, "props", &T::props);
 };
 
 int main(int argc, char **args)
@@ -50,8 +57,8 @@ int main(int argc, char **args)
     server.Post("/list",
                 [](const auto &req, auto &response)
                 {
-                    auto props = glz::read_json<std::set<std::string>>(req.body);
-                    auto data  = glz::write_json(patchbay::get().list(props.value_or(std::set<std::string>{})));
+                    auto props = glz::read_json<std::vector<std::string>>(req.body);
+                    auto data  = glz::write_json(patchbay::get().list(props.value_or(std::vector<std::string>{})));
 
                     response.set_content(data, "application/json");
                 });

@@ -1,6 +1,6 @@
 #pragma once
-#include <set>
 #include <map>
+#include <vector>
 #include <memory>
 #include <string>
 #include <cstdint>
@@ -13,13 +13,16 @@ namespace vencord
         exclude,
     };
 
-    struct target
+    struct prop
     {
         std::string key;
         std::string value;
+    };
 
-      public:
+    struct target
+    {
         target_mode mode;
+        std::vector<prop> props;
     };
 
     using node = std::map<std::string, std::string>;
@@ -38,13 +41,13 @@ namespace vencord
         patchbay();
 
       public:
-        void link(target target);
+        void link(target targets);
 
       public:
         void unlink();
 
       public:
-        [[nodiscard]] std::set<node> list(std::set<std::string> props);
+        [[nodiscard]] std::vector<node> list(std::vector<std::string> props);
 
       public:
         [[nodiscard]] static patchbay &get();

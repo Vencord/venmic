@@ -36,12 +36,12 @@ namespace vencord
         std::unique_ptr<cr_recipe::receiver> receiver;
 
       private:
-        std::optional<target> target;
+        std::optional<vencord::target> target;
         std::multimap<std::uint32_t, pw::link> created;
 
       private:
         std::unique_ptr<pw::node> mic;
-        std::optional<speaker> speaker;
+        std::optional<vencord::speaker> speaker;
 
       private:
         std::map<std::uint32_t, pw::link_info> links;
@@ -74,7 +74,7 @@ namespace vencord
 
       private:
         template <typename T>
-        void receive(cr_recipe::sender &, const T &);
+        void receive(cr_recipe::sender &, T &);
 
       private:
         void start(pw_recipe::receiver, cr_recipe::sender);

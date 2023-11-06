@@ -1,10 +1,71 @@
 #include <cstdio>
-#include <napi.h>
+#include <optional>
 
 #include <vencord/patchbay.hpp>
 
+#include <napi.h>
 #include <range/v3/view.hpp>
 #include <range/v3/algorithm.hpp>
+
+template <typename T>
+std::optional<T> convert(Napi::Value) = delete;
+
+template <>
+std::optional<std::string> convert(Napi::Value value)
+{
+    if (!value.IsString())
+    {
+        return std::nullopt;
+    }
+
+    return value.ToString();
+}
+
+template <>
+std::optional<vencord::prop> convert(Napi::Value value)
+{
+    if (!value.IsObject())
+    {
+        return std::nullopt;
+    }
+
+    auto object = value.ToObject();
+
+    if (!object.Has("key") || !object.Has("value"))
+    {
+        return std::nullopt;
+    }
+
+    return vencord::prop{.key = object.Get("key").ToString(), .value = object.Get("value").ToString()};
+}
+
+template <typename T>
+std::optional<std::vector<T>> to_array(Napi::Value value)
+{
+    if (!value.IsArray())
+    {
+        return std::nullopt;
+    }
+
+    auto array = value.As<Napi::Array>();
+
+    std::vector<T> rtn;
+    rtn.reserve(array.Length());
+
+    for (auto i = 0u; array.Length() > i; i++)
+    {
+        auto converted = convert<T>(array.Get(i));
+
+        if (!converted)
+        {
+            return std::nullopt;
+        }
+
+        rtn.emplace_back(converted.value());
+    }
+
+    return rtn;
+}
 
 struct patchbay : public Napi::ObjectWrap<patchbay>
 {
@@ -25,30 +86,19 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
     {
         auto env = info.Env();
 
-        std::set<std::string> props{};
+        std::vector<std::string> props{};
 
         if (info.Length() == 1)
         {
-            if (!info[0].IsArray())
+            auto array = to_array<std::string>(info[0]);
+
+            if (!array)
             {
-                Napi::Error::New(env, "[venmic] expected array").ThrowAsJavaScriptException();
+                Napi::Error::New(env, "[venmic] expected list of strings").ThrowAsJavaScriptException();
                 return {};
             }
 
-            auto array = info[0].As<Napi::Array>();
-
-            for (auto i = 0u; array.Length() > i; i++)
-            {
-                auto item = array.Get(i);
-
-                if (!item.IsString())
-                {
-                    Napi::Error::New(env, "[venmic] expected item to be string").ThrowAsJavaScriptException();
-                    return {};
-                }
-
-                props.emplace(item.ToString());
-            }
+            props = std::move(array.value());
         }
 
         auto list = vencord::patchbay::get().list(props);
@@ -90,23 +140,24 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
 
         auto data = info[0].ToObject();
 
-        if (!data.Has("key") || !data.Has("value") || !data.Has("mode"))
+        if (!data.Has("props") || !data.Has("mode"))
         {
-            Napi::Error::New(env, "[venmic] expected keys 'key', 'value' and 'mode'").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected keys 'props' and 'mode'").ThrowAsJavaScriptException();
             return Napi::Boolean::New(env, false);
         }
 
-        if (!data.Get("key").IsString() || !data.Get("value").IsString() || !data.Get("mode").IsString())
+        auto mode  = convert<std::string>(data.Get("mode"));
+        auto props = to_array<vencord::prop>(data.Get("props"));
+
+        if (!mode || !props)
         {
-            Napi::Error::New(env, "[venmic] expected values to be strings").ThrowAsJavaScriptException();
+            Napi::Error::New(env, "[venmic] expected 'mode' to be string and 'props' to be array of key-value pairs")
+                .ThrowAsJavaScriptException();
+
             return Napi::Boolean::New(env, false);
         }
 
-        auto key   = static_cast<std::string>(data.Get("key").ToString());
-        auto value = static_cast<std::string>(data.Get("value").ToString());
-        auto mode  = static_cast<std::string>(data.Get("mode").ToString());
-
-        if (mode != "include" && mode != "exclude")
+        if (mode.value() != "include" && mode.value() != "exclude")
         {
             Napi::Error::New(env, "[venmic] expected mode to be either exclude or include")
                 .ThrowAsJavaScriptException();
@@ -115,9 +166,8 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         }
 
         vencord::patchbay::get().link({
-            key,
-            value,
-            mode == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
+            .mode  = mode.value() == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
+            .props = props.value(),
         });
 
         return Napi::Boolean::New(env, true);
