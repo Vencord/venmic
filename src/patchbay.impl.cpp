@@ -110,7 +110,7 @@ namespace vencord
                     return;
                 }
 
-                logger::get()->info("linked {}: {}", id, link->id());
+                logger::get()->info("created link {} (-> {}:{})", link->id(), id, port.props["audio.channel"]);
                 created.emplace(id, std::move(*link));
             }
         }
