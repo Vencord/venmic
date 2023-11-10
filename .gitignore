@@ -1,4 +1,6 @@
 node_modules
-.vscode
-build
 prebuilds
+build
+
+.vscode
+.cache
