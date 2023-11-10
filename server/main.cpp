@@ -51,7 +51,7 @@ int main(int argc, char **args)
     logger::get()->warn("DISCLAIMER: This program is not intended for standalone usage. You need a modified discord "
                         "client that makes use of this!");
 
-    logger::get()->info("Running on port: {}\n", port);
+    logger::get()->info("Running on port: {}", port);
 
     httplib::Server server;
 
