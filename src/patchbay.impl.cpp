@@ -98,7 +98,7 @@ namespace vencord
                     return true;
                 }
 
-                if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"])
+                if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"] == "UNK")
                 {
                     return item.props["port.id"] == port.props["port.id"];
                 }
