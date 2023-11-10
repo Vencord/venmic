@@ -47,6 +47,7 @@ namespace vencord
     {
         auto node = core->create<pw::node>({"adapter",
                                             {{"audio.channels", "2"},
+                                             {"audio.position", "FL,FR"},
                                              {"node.name", "vencord-screen-share"},
                                              {"media.class", "Audio/Source/Virtual"},
                                              {"factory.name", "support.null-audio-sink"}}})
@@ -92,7 +93,17 @@ namespace vencord
         {
             auto matching_channel = [&](auto &item)
             {
-                return target_ports.size() == 1 || item.props["audio.channel"] == port.props["audio.channel"];
+                if (target_ports.size() == 1)
+                {
+                    return true;
+                }
+
+                if (item.props["audio.channel"] == "UNK" & || port.props["audio.channel"])
+                {
+                    return item.props["port.id"] == port.props["port.id"];
+                }
+
+                return item.props["audio.channel"] == port.props["audio.channel"];
             };
 
             auto others = source_ports | ranges::views::filter(matching_channel) | ranges::to<std::vector>;
@@ -334,8 +345,8 @@ namespace vencord
                         | ranges::views::filter(desireable) //
                         | ranges::views::filter(can_output);
 
-        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this (unless we
-        // have them bound constantly). Thus we re-bind them.
+        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this
+        // (unless we have them bound constantly). Thus we re-bind them.
 
         for (auto &[id, node] : filtered)
         {
