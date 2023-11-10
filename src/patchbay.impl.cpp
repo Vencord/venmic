@@ -69,6 +69,8 @@ namespace vencord
             return;
         }
 
+        logger::get()->debug("trying to link {}, mic is {}", id, mic->id());
+
         auto &target = nodes[id];
         auto &source = nodes[mic->id()];
 
