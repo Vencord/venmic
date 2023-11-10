@@ -104,7 +104,13 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC cr::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta)
+CPMFindPackage(
+  NAME           spdlog
+  VERSION        1.12.0
+  GIT_REPOSITORY "https://github.com/gabime/spdlog"
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC cr::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta spdlog::spdlog)
 
 # --------------------------------------------------------------------------------------------------------
 # Custom Find-Package configurations

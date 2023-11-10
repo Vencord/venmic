@@ -1,4 +1,5 @@
 #include "patchbay.impl.hpp"
+#include "logger.hpp"
 
 #include <future>
 #include <optional>
@@ -49,6 +50,7 @@ namespace vencord
 
         if (cached)
         {
+            logger::get()->debug("[has_pipewire] using cache");
             return cached.value();
         }
 
@@ -75,9 +77,7 @@ namespace vencord
 
             if (state == PA_CONTEXT_FAILED)
             {
-                // NOLINTNEXTLINE
-                fprintf(stderr, "[venmic] Failed to connect pulse context\n");
-
+                logger::get()->error("failed to connect pulse context");
                 pa_mainloop_quit(loop, 0);
                 return;
             }
@@ -105,11 +105,14 @@ namespace vencord
 
         if (result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         {
+            logger::get()->error("[has_pipewire] result was not ready");
             return false;
         }
 
         auto name = result.get();
         std::transform(name.begin(), name.end(), name.begin(), [](char c) { return std::tolower(c); });
+
+        logger::get()->debug("[has_pipewire] pulse-server was {}", name);
 
         auto rtn = name.find("pipewire") != std::string::npos;
         cached.emplace(rtn);

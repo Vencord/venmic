@@ -3,6 +3,8 @@
 
 #include <httplib.h>
 #include <glaze/glaze.hpp>
+
+#include <vencord/logger.hpp>
 #include <vencord/patchbay.hpp>
 
 template <>
@@ -28,6 +30,7 @@ struct glz::meta<vencord::target>
 
 int main(int argc, char **args)
 {
+    using vencord::logger;
     using vencord::patchbay;
 
     auto port = 7591;
@@ -40,17 +43,15 @@ int main(int argc, char **args)
         }
         catch (...)
         {
-            std::cerr << std::format("Bad arguments, usage: {} [port]", args[0]) << std::endl;
+            logger::get()->error("Bad arguments, usage: {} [port]", args[0]);
             return 1;
         }
     }
 
-    std::cout << "DISCLAIMER: This program is not intended for standalone usage. You need a modified discord client "
-                 "that makes use of this."
-              << std::endl
-              << std::endl;
+    logger::get()->warn("DISCLAIMER: This program is not intended for standalone usage. You need a modified discord "
+                        "client that makes use of this!");
 
-    std::cout << std::format("Running on port {}\n", port);
+    logger::get()->info("Running on port: {}\n", port);
 
     httplib::Server server;
 

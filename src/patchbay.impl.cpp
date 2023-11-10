@@ -1,4 +1,5 @@
 #include "patchbay.impl.hpp"
+#include "logger.hpp"
 #include "meta.hpp"
 
 #include <stdexcept>
@@ -83,6 +84,8 @@ namespace vencord
         auto target_ports = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
         auto source_ports = source.ports | ranges::views::filter(is_input);
 
+        logger::get()->debug("target ports: {}", target_ports.size());
+
         for (auto &port : target_ports)
         {
             auto matching_channel = [&](auto &item)
@@ -90,7 +93,8 @@ namespace vencord
                 return target_ports.size() == 1 || item.props["audio.channel"] == port.props["audio.channel"];
             };
 
-            auto others = source_ports | ranges::views::filter(matching_channel);
+            auto others = source_ports | ranges::views::filter(matching_channel) | ranges::to<std::vector>;
+            logger::get()->debug("{} has {} corresponding ports", port.id, others.size());
 
             for (auto &other : others)
             {
@@ -102,9 +106,7 @@ namespace vencord
 
                 if (!link.has_value())
                 {
-                    // NOLINTNEXTLINE
-                    fprintf(stderr, "[venmic] Failed to create link: %s\n", link.error().message);
-
+                    logger::get()->error("failed to create link: {}", link.error().message);
                     return;
                 }
 
@@ -142,6 +144,7 @@ namespace vencord
                 return;
             }
 
+            logger::get()->info("found speakers: {}", global.id);
             speaker->id = global.id;
 
             return;
@@ -153,6 +156,7 @@ namespace vencord
 
             if (!metadata.has_value())
             {
+                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, metadata.error().message);
                 return;
             }
 
@@ -167,6 +171,9 @@ namespace vencord
 
             if (!parsed.has_value())
             {
+                logger::get()->warn("failed to parse default speaker: {}",
+                                    static_cast<std::uint32_t>(parsed.error().ec));
+
                 return;
             }
 
@@ -180,6 +187,7 @@ namespace vencord
                 return;
             }
 
+            logger::get()->info("found speakers: {}", node->first);
             speaker->id = node->first;
 
             return;
@@ -191,6 +199,7 @@ namespace vencord
 
             if (!port.has_value())
             {
+                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, port.error().message);
                 return;
             }
 
@@ -198,6 +207,7 @@ namespace vencord
 
             if (!props.contains("node.id"))
             {
+                logger::get()->warn("{} has no parent", global.id);
                 return;
             }
 
@@ -214,6 +224,7 @@ namespace vencord
 
             if (!link.has_value())
             {
+                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, link.error().message);
                 return;
             }
 
@@ -239,6 +250,7 @@ namespace vencord
 
         if (info.input.node != speaker->id)
         {
+            logger::get()->debug("ignoring {}: not connected to speaker", id);
             return;
         }
 
@@ -260,7 +272,7 @@ namespace vencord
         relink(info.output.node);
     }
 
-    void patchbay::impl::on_node(std::uint32_t parent)
+    void patchbay::impl::on_node(std::uint32_t id)
     {
         if (!target)
         {
@@ -274,22 +286,24 @@ namespace vencord
 
         auto match = [&](const auto &target)
         {
-            return nodes[parent].info.props[target.key] == target.value;
+            return nodes[id].info.props[target.key] == target.value;
         };
 
         if (!ranges::any_of(target->props, match))
         {
+            logger::get()->debug("ignoring {}", id);
             return;
         }
 
-        if (nodes[parent].ports.empty())
+        if (nodes[id].ports.empty())
         {
+            logger::get()->debug("ignoring {}: no ports", id);
             return;
         }
 
         core->update();
 
-        relink(parent);
+        relink(id);
     }
 
     template <>
@@ -380,9 +394,7 @@ namespace vencord
 
         if (!core || !registry)
         {
-            // NOLINTNEXTLINE
-            fprintf(stderr, "[venmic] Could not create core or registry\n");
-
+            logger::get()->error("could not create core or registry");
             sender.send(ready{false});
             return;
         }
@@ -390,6 +402,7 @@ namespace vencord
         receiver.attach(loop, [this, &sender]<typename T>(T message) { receive(sender, message); });
 
         auto listener = registry->listen();
+
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });
         listener.on<pw::registry_event::global>([this](const auto &global) { global_added(global); });
 
