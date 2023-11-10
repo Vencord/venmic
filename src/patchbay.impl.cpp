@@ -98,6 +98,8 @@ namespace vencord
                     return true;
                 }
 
+                // Sometimes, for whatever reason, the "audio.channel" of a venmic port may be "UNK", to circumvent any
+                // issues regarding this we'll fallback to "port.id"
                 if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"] == "UNK")
                 {
                     return item.props["port.id"] == port.props["port.id"];
