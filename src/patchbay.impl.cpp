@@ -110,6 +110,7 @@ namespace vencord
                     return;
                 }
 
+                logger::get()->info("linked {}: {}", id, link->id());
                 created.emplace(id, std::move(*link));
             }
         }
