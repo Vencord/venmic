@@ -84,7 +84,7 @@ namespace vencord
         auto target_ports = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
         auto source_ports = source.ports | ranges::views::filter(is_input);
 
-        logger::get()->debug("target ports: {}", target_ports.size());
+        logger::get()->debug("target port(s): {}", target_ports.size());
 
         for (auto &port : target_ports)
         {
@@ -94,7 +94,7 @@ namespace vencord
             };
 
             auto others = source_ports | ranges::views::filter(matching_channel) | ranges::to<std::vector>;
-            logger::get()->debug("{} has {} corresponding ports", port.id, others.size());
+            logger::get()->debug("{} has {} corresponding port(s)", port.id, others.size());
 
             for (auto &other : others)
             {
@@ -292,7 +292,7 @@ namespace vencord
 
         if (!ranges::any_of(target->props, match))
         {
-            logger::get()->debug("ignoring {}", id);
+            logger::get()->debug("ignoring {}: no props match", id);
             return;
         }
 
