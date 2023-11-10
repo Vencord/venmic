@@ -21,6 +21,7 @@ namespace vencord
         stdout_sink->set_level(spdlog::level::info);
 
         m_impl->logger = std::make_unique<spdlog::logger>("venmic", spdlog::sinks_init_list{stdout_sink, file_sink});
+        m_impl->logger->set_level(spdlog::level::trace);
         m_impl->logger->flush_on(spdlog::level::trace);
     }
 
