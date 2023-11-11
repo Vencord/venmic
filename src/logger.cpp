@@ -1,28 +1,65 @@
 #include "logger.hpp"
 
+#include <filesystem>
 #include <spdlog/sinks/ansicolor_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 namespace vencord
 {
+    namespace fs = std::filesystem;
+
     struct logger::impl
     {
         std::unique_ptr<spdlog::logger> logger;
     };
 
+    fs::path config_dir()
+    {
+        fs::path rtn = fs::temp_directory_path();
+
+        if (auto home = std::getenv("HOME"))
+        {
+            rtn = home / ".local" / "state";
+        }
+
+        if (auto state_home = std::getenv("XDG_STATE_HOME"))
+        {
+            rtn = state_home;
+        }
+
+        return rtn / "venmic";
+    }
+
     logger::logger() : m_impl(std::make_unique<impl>())
     {
         namespace sinks = spdlog::sinks;
 
-        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>("venmic.log");
-        file_sink->set_level(spdlog::level::trace);
-
-        auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
-        stdout_sink->set_level(spdlog::level::info);
-
-        m_impl->logger = std::make_unique<spdlog::logger>("venmic", spdlog::sinks_init_list{stdout_sink, file_sink});
+        m_impl->logger = std::make_unique<spdlog::logger>("venmic");
         m_impl->logger->set_level(spdlog::level::trace);
         m_impl->logger->flush_on(spdlog::level::trace);
+
+        auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
+
+        stdout_sink->set_level(spdlog::level::info);
+        m_impl->logger->sinks().emplace_back(stdout_sink);
+
+        if (!std::getenv("VENMIC_ENABLE_LOG"))
+        {
+            return;
+        }
+
+        auto config_path = config_dir() / "venmic.log";
+
+        if (!fs::exists(config_path))
+        {
+            [[maybe_unused]] std::error_code ec;
+            fs::create_directories(config_path.parent_path(), ec);
+        }
+
+        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>(config_path.string());
+
+        file_sink->set_level(spdlog::level::trace);
+        m_impl->logger->sinks().emplace_back(file_sink);
     }
 
     spdlog::logger *logger::operator->() const
