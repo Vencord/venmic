@@ -13,9 +13,9 @@ namespace vencord
         std::unique_ptr<spdlog::logger> logger;
     };
 
-    fs::path config_dir()
+    fs::path log_directory()
     {
-        fs::path rtn = fs::temp_directory_path();
+        auto rtn = fs::temp_directory_path();
 
         if (auto home = std::getenv("HOME"))
         {
@@ -48,15 +48,15 @@ namespace vencord
             return;
         }
 
-        auto config_path = config_dir() / "venmic.log";
+        auto log_file = log_directory() / "venmic.log";
 
-        if (!fs::exists(config_path))
+        if (!fs::exists(log_file))
         {
             [[maybe_unused]] std::error_code ec;
-            fs::create_directories(config_path.parent_path(), ec);
+            fs::create_directories(log_file.parent_path(), ec);
         }
 
-        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>(config_path.string());
+        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>(log_file.string());
 
         file_sink->set_level(spdlog::level::trace);
         m_impl->logger->sinks().emplace_back(file_sink);
