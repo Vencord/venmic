@@ -19,7 +19,7 @@ namespace vencord
 
         if (auto home = std::getenv("HOME"))
         {
-            rtn = home / ".local" / "state";
+            rtn = fs::path{home} / ".local" / "state";
         }
 
         if (auto state_home = std::getenv("XDG_STATE_HOME"))
