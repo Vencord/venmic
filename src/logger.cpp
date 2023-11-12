@@ -48,15 +48,15 @@ namespace vencord
             return;
         }
 
-        auto log_file = log_directory() / "venmic.log";
+        auto directory = log_directory();
 
-        if (!fs::exists(log_file))
+        if (!fs::exists(directory))
         {
             [[maybe_unused]] std::error_code ec;
-            fs::create_directories(log_file.parent_path(), ec);
+            fs::create_directories(directory, ec);
         }
 
-        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>(log_file.string());
+        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>((directory / "venmic.log").string());
 
         file_sink->set_level(spdlog::level::trace);
         m_impl->logger->sinks().emplace_back(file_sink);
