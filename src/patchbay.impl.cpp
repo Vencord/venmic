@@ -65,6 +65,11 @@ namespace vencord
     {
         created.erase(id);
 
+        if (!mic)
+        {
+            return;
+        }
+
         if (!nodes.contains(id))
         {
             return;
@@ -119,10 +124,10 @@ namespace vencord
 
             for (auto &other : others)
             {
-                auto link = core->create<pw::link>(pw::link_factory{
-                                                       other.id,
-                                                       port.id,
-                                                   })
+                auto link = core->create<pw::link, pw::link_factory>({
+                                                                         other.id,
+                                                                         port.id,
+                                                                     })
                                 .get();
 
                 if (!link.has_value())
@@ -258,12 +263,7 @@ namespace vencord
 
     void patchbay::impl::on_link(std::uint32_t id)
     {
-        if (!target || !speaker)
-        {
-            return;
-        }
-
-        if (target->mode != target_mode::exclude)
+        if (!include.empty() || !speaker)
         {
             return;
         }
@@ -279,12 +279,12 @@ namespace vencord
         // "Output" = the node that is emitting sound
         auto &output = nodes[info.output.node];
 
-        auto match = [&](const auto &target)
+        auto match = [&](const auto &prop)
         {
-            return output.info.props[target.key] == target.value;
+            return output.info.props[prop.key] == prop.value;
         };
 
-        if (ranges::any_of(target->props, match))
+        if (ranges::any_of(exclude, match))
         {
             return;
         }
@@ -296,24 +296,25 @@ namespace vencord
 
     void patchbay::impl::on_node(std::uint32_t id)
     {
-        if (!target)
+        if (include.empty())
         {
             return;
         }
 
-        if (target->mode != target_mode::include)
+        auto match = [&](const auto &prop)
         {
-            return;
-        }
-
-        auto match = [&](const auto &target)
-        {
-            return nodes[id].info.props[target.key] == target.value;
+            return nodes[id].info.props[prop.key] == prop.value;
         };
 
-        if (!ranges::any_of(target->props, match))
+        if (ranges::any_of(exclude, match))
         {
-            logger::get()->debug("ignoring {}: no props match", id);
+            logger::get()->debug("ignoring {}: explicitly excluded", id);
+            return;
+        }
+
+        if (!ranges::any_of(include, match))
+        {
+            logger::get()->debug("ignoring {}: no target matched", id);
             return;
         }
 
@@ -370,7 +371,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, vencord::target &req)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, set_target &req)
     {
         if (!mic)
         {
@@ -378,7 +379,9 @@ namespace vencord
         }
 
         created.clear();
-        target.emplace(std::move(req));
+
+        include = std::move(req.include);
+        exclude = std::move(req.exclude);
 
         for (const auto &[id, info] : nodes)
         {
@@ -394,7 +397,9 @@ namespace vencord
     template <>
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] unset_target &)
     {
-        target.reset();
+        include.clear();
+        exclude.clear();
+
         created.clear();
 
         mic.reset();

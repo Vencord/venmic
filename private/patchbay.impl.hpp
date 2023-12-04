@@ -36,12 +36,13 @@ namespace vencord
         std::unique_ptr<cr_recipe::receiver> receiver;
 
       private:
-        std::optional<vencord::target> target;
-        std::multimap<std::uint32_t, pw::link> created;
+        std::vector<prop> include;
+        std::vector<prop> exclude;
 
       private:
         std::unique_ptr<pw::node> mic;
         std::optional<vencord::speaker> speaker;
+        std::multimap<std::uint32_t, pw::link> created;
 
       private:
         std::map<std::uint32_t, pw::link_info> links;

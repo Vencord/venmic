@@ -21,11 +21,17 @@ struct glz::meta<vencord::prop>
     static constexpr auto value = object("key", &T::key, "value", &T::value);
 };
 
-template <>
-struct glz::meta<vencord::target>
+struct targets
 {
-    using T                     = vencord::target;
-    static constexpr auto value = object("mode", &T::mode, "props", &T::props);
+    std::vector<vencord::prop> include;
+    std::vector<vencord::prop> exclude;
+};
+
+template <>
+struct glz::meta<targets>
+{
+    using T                     = targets;
+    static constexpr auto value = object("include", &T::include, "exclude", &T::exclude);
 };
 
 int main(int argc, char **args)
@@ -67,7 +73,8 @@ int main(int argc, char **args)
     server.Post("/link",
                 [](const auto &req, auto &response)
                 {
-                    vencord::target parsed;
+                    targets parsed;
+
                     auto error = glz::read<glz::opts{.error_on_missing_keys = true}>(parsed, req.body);
 
                     if (error)
@@ -76,7 +83,7 @@ int main(int argc, char **args)
                         return;
                     }
 
-                    patchbay::get().link(parsed);
+                    patchbay::get().link(parsed.include, parsed.exclude);
 
                     response.status = 200;
                 });

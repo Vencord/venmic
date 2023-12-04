@@ -140,35 +140,28 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
 
         auto data = info[0].ToObject();
 
-        if (!data.Has("props") || !data.Has("mode"))
+        if (!data.Has("include") && !data.Has("exclude"))
         {
-            Napi::Error::New(env, "[venmic] expected keys 'props' and 'mode'").ThrowAsJavaScriptException();
-            return Napi::Boolean::New(env, false);
-        }
-
-        auto mode  = convert<std::string>(data.Get("mode"));
-        auto props = to_array<vencord::prop>(data.Get("props"));
-
-        if (!mode || !props)
-        {
-            Napi::Error::New(env, "[venmic] expected 'mode' to be string and 'props' to be array of key-value pairs")
+            Napi::Error::New(env, "[venmic] expected at least one of keys 'include' or 'exclude'")
                 .ThrowAsJavaScriptException();
 
             return Napi::Boolean::New(env, false);
         }
 
-        if (mode.value() != "include" && mode.value() != "exclude")
+        auto include = to_array<vencord::prop>(data.Get("include"));
+        auto exclude = to_array<vencord::prop>(data.Get("exclude"));
+
+        if (!include && !exclude)
         {
-            Napi::Error::New(env, "[venmic] expected mode to be either exclude or include")
+            Napi::Error::New(env, "[venmic] expected either 'include' or 'exclude' or both to be present and to be "
+                                  "arrays of key-value pairs")
                 .ThrowAsJavaScriptException();
 
             return Napi::Boolean::New(env, false);
         }
 
-        vencord::patchbay::get().link({
-            .mode  = mode.value() == "include" ? vencord::target_mode::include : vencord::target_mode::exclude,
-            .props = props.value(),
-        });
+        vencord::patchbay::get().link(include.value_or(std::vector<vencord::prop>{}),
+                                      exclude.value_or(std::vector<vencord::prop>{}));
 
         return Napi::Boolean::New(env, true);
     }

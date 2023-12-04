@@ -11,9 +11,9 @@ namespace vencord
 
     patchbay::patchbay() : m_impl(std::make_unique<impl>()) {}
 
-    void patchbay::link(target target)
+    void patchbay::link(std::vector<prop> include, std::vector<prop> exclude)
     {
-        m_impl->sender->send(target);
+        m_impl->sender->send(set_target{.include = std::move(include), .exclude = std::move(exclude)});
     }
 
     void patchbay::unlink()

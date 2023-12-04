@@ -1,9 +1,9 @@
 #pragma once
+
 #include <map>
 #include <vector>
 #include <memory>
 #include <string>
-#include <cstdint>
 
 namespace vencord
 {
@@ -17,12 +17,6 @@ namespace vencord
     {
         std::string key;
         std::string value;
-    };
-
-    struct target
-    {
-        target_mode mode;
-        std::vector<prop> props;
     };
 
     using node = std::map<std::string, std::string>;
@@ -41,7 +35,7 @@ namespace vencord
         patchbay();
 
       public:
-        void link(target targets);
+        void link(std::vector<prop> include, std::vector<prop> exclude);
 
       public:
         void unlink();

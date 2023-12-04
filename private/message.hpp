@@ -15,6 +15,12 @@ namespace vencord
         std::vector<std::string> props;
     };
 
+    struct set_target
+    {
+        std::vector<prop> include;
+        std::vector<prop> exclude;
+    };
+
     struct unset_target
     {
     };
@@ -28,8 +34,6 @@ namespace vencord
         bool success{true};
     };
 
-    struct target;
-
-    using pw_recipe = pw::recipe<list_nodes, target, unset_target, quit>;
+    using pw_recipe = pw::recipe<list_nodes, set_target, unset_target, quit>;
     using cr_recipe = cr::recipe<std::vector<node>, ready>;
 } // namespace vencord

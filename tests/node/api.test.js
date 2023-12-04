@@ -25,11 +25,15 @@ assert.throws(() => patchbay.list([10]), /expected list of strings/ig);
 
 assert.throws(() => patchbay.link(10), /expected link object/ig);
 
-assert.throws(() => patchbay.link({ a: "A", b: "B", c: "C" }), /expected keys/ig);
-assert.throws(() => patchbay.link({ key: "node.name", value: "Firefox", mode: "gibberish" }), /expected keys/ig);
+assert.throws(() => patchbay.link({ }), /'include' and 'exclude'/ig);
+assert.throws(() => patchbay.link({ a: "A", b: "B", c: "C" }), /'include' and 'exclude'/ig);
+assert.throws(() => patchbay.link({ key: "node.name", value: "Firefox", mode: "gibberish" }), /'include' and 'exclude'/ig);
 
-assert.throws(() => patchbay.link({ props: [{ a: 0, b: 0 }], mode: "gibberish" }), /key-value/ig);
-assert.throws(() => patchbay.link({ props: [{ key: "", value: "" }], mode: "gibberish" }), /expected mode/ig);
+assert.throws(() => patchbay.link({ include: "Firefox" }), /key-value/ig);
+assert.throws(() => patchbay.link({ include: {} }), /key-value/ig);
 
-assert.doesNotThrow(() => patchbay.link({ props: [{ key: "node.name", value: "Firefox" }], mode: "include" }));
+assert.doesNotThrow(() => patchbay.link({ include: [{ key: "node.name", value: "Firefox" }] }));
+assert.doesNotThrow(() => patchbay.link({ exclude: [{ key: "node.name", value: "Firefox" }] }));
+assert.doesNotThrow(() => patchbay.link({ include: [{ key: "node.name", value: "Firefox" }], exclude: [{ key: "object.id", value: "100" }] }));
+
 assert.doesNotThrow(() => patchbay.unlink());
