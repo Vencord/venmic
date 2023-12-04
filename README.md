@@ -22,13 +22,31 @@ The Rest-Server exposes three simple endpoints
   > List all available applications to share.  
   > You can optionally define a JSON-Body containing all the props the listed nodes should have (i.e. `["node.name"]`).
 
-* (POST) `/link`
-  > Expects a JSON-Body containing the target application, i.e. `{"key": "node.name", "value": "Firefox", "mode": "include"}`  
-  > Valid values for `mode` are:
-  > * `include`  
-  >    The specified application will be shared
-  > * `exclude`  
-  >    All _but_ the specified application will be shared
+* (POST) `/link`  
+  <blockquote>
+  Expects a JSON-Body in the following form:
+  <pre lang="json">
+  {
+    "include": 
+    [
+      { "key": "node.name", "value": "Firefox" }
+    ],
+    "exclude":
+    [
+      { "key": "node.name", "value": "Chrome" }
+    ]
+  }
+  </pre>
+
+  Depending on wether or not `include` or `exclude` are defined the behavior will change:
+
+  * only `include`
+    * Links nodes that match given props
+  * only `exclude`
+    * Links nodes that do not match given props
+  * both `include` and `exclude`
+    * Links all applications that match props in `include` and not those given in `exclude`
+  </blockquote>
 
 * (GET) `/unlink`
   > Unlinks the currently linked application
