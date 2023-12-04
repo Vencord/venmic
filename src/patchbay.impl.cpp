@@ -70,6 +70,12 @@ namespace vencord
             return;
         }
 
+        if (id == mic->id())
+        {
+            logger::get()->warn("tried to link venmic to itself, this shouldn't happen!");
+            return;
+        }
+
         logger::get()->debug("trying to link {}, mic is {}", id, mic->id());
 
         auto &target = nodes[id];
