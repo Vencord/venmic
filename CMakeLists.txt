@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 3.0.0)
+project(venmic LANGUAGES CXX VERSION 3.1.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -15,6 +15,10 @@ option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
 
 if (venmic_addon)
   set(venmic_server OFF)
+endif()
+
+if (venmic_server)
+  set(venmic_addon OFF)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -95,7 +99,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        1.6.0
+  VERSION        1.9.7
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
