@@ -11,13 +11,6 @@ struct targets
 };
 
 template <>
-struct glz::meta<vencord::target_mode>
-{
-    using enum vencord::target_mode;
-    static constexpr auto value = enumerate("include", include, "exclude", exclude);
-};
-
-template <>
 struct glz::meta<vencord::prop>
 {
     using T                     = vencord::prop;
