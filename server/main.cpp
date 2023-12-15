@@ -1,11 +1,14 @@
-#include <format>
-#include <iostream>
-
 #include <httplib.h>
 #include <glaze/glaze.hpp>
 
 #include <vencord/logger.hpp>
 #include <vencord/patchbay.hpp>
+
+struct targets
+{
+    std::vector<vencord::prop> include;
+    std::vector<vencord::prop> exclude;
+};
 
 template <>
 struct glz::meta<vencord::target_mode>
@@ -19,12 +22,6 @@ struct glz::meta<vencord::prop>
 {
     using T                     = vencord::prop;
     static constexpr auto value = object("key", &T::key, "value", &T::value);
-};
-
-struct targets
-{
-    std::vector<vencord::prop> include;
-    std::vector<vencord::prop> exclude;
 };
 
 template <>
