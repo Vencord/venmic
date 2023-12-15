@@ -1,0 +1,66 @@
+name: 🐛 Bug Report
+description: Report a bug in the current version of venmic
+labels: ["bug"]
+assignees: Curve
+
+body:
+  - type: textarea
+    attributes:
+      label: ✍️ Bug Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 🔁 Steps to reproduce
+      description: Steps to reproduce the behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 🗒️ Debug Output
+      description: Please dump the contents of the log or stdout here (see https://github.com/Vencord/venmic#-debugging).
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: ❔ Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: 👀 Screenshots
+      description: (If applicable) Add screenshots from applications like qpwgraph (https://flathub.org/apps/org.rncbc.qpwgraph) here.
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: 📦 Vesktop Version
+      description: Please note the Vesktop version used (can be found in Vesktop -> About Vesktop).
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: 🖥️ Distribution
+      description: Please note the distribution you use here as well as it's release if applicable.
+    validations:
+      required: false
+
+  - type: checkboxes
+    attributes:
+      label: ✅ I confirm that...
+      description: Please confirm these things by clicking the checkboxes
+      options:
+        - label: I have collected all the required information and read all the comments in this document
+          required: true
+        - label: I searched for an existing bug report for this issue
+          required: true
+        - label: the problem does occur with the reproduction steps I provided
+          required: true
