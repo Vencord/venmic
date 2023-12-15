@@ -1,8 +1,10 @@
 #include "patchbay.impl.hpp"
+
 #include "logger.hpp"
-#include "meta.hpp"
 
 #include <stdexcept>
+
+#include <glaze/glaze.hpp>
 
 #include <range/v3/view.hpp>
 #include <range/v3/range.hpp>
@@ -12,6 +14,11 @@
 
 namespace vencord
 {
+    struct pw_metadata_name
+    {
+        std::string name;
+    };
+
     patchbay::impl::~impl()
     {
         should_exit = true;
@@ -77,11 +84,11 @@ namespace vencord
 
         if (id == mic->id())
         {
-            logger::get()->warn("tried to link venmic to itself, this shouldn't happen!");
+            logger::get()->warn("[patchbay] (relink) prevented link to self", id, mic->id());
             return;
         }
 
-        logger::get()->debug("trying to link {}, mic is {}", id, mic->id());
+        logger::get()->debug("[patchbay] (relink) linking {} [with mic = {}]", id, mic->id());
 
         auto &target = nodes[id];
         auto &source = nodes[mic->id()];
@@ -98,7 +105,7 @@ namespace vencord
         auto target_ports = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
         auto source_ports = source.ports | ranges::views::filter(is_input);
 
-        logger::get()->debug("target port(s): {}", target_ports.size());
+        logger::get()->debug("[patchbay] (relink) {} has {} port(s)", id, target_ports.size());
 
         for (auto &port : target_ports)
         {
@@ -106,11 +113,15 @@ namespace vencord
             {
                 if (target_ports.size() == 1)
                 {
+                    logger::get()->debug("[patchbay] (relink) {} is mono", item.id);
                     return true;
                 }
 
-                // Sometimes, for whatever reason, the "audio.channel" of a venmic port may be "UNK", to circumvent any
-                // issues regarding this we'll fallback to "port.id"
+                /*
+                 * Sometimes, for whatever reason, the "audio.channel" of a venmic port may be "UNK", to circumvent any
+                 * issues regarding this we'll fallback to "port.id"
+                 */
+
                 if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"] == "UNK")
                 {
                     return item.props["port.id"] == port.props["port.id"];
@@ -120,145 +131,146 @@ namespace vencord
             };
 
             auto others = source_ports | ranges::views::filter(matching_channel) | ranges::to<std::vector>;
-            logger::get()->debug("{} has {} corresponding port(s)", port.id, others.size());
+            logger::get()->debug("[patchbay] (relink) {} maps to {} other(s)", port.id, others.size());
 
             for (auto &other : others)
             {
-                auto link = core->create<pw::link, pw::link_factory>({
-                                                                         other.id,
-                                                                         port.id,
-                                                                     })
-                                .get();
+                auto link = core->create<pw::link, pw::link_factory>({other.id, port.id}).get();
 
                 if (!link.has_value())
                 {
-                    logger::get()->error("failed to create link: {}", link.error().message);
+                    logger::get()->warn("[patchbay] (relink) failed to link: {}", link.error().message);
                     return;
                 }
 
-                logger::get()->info("created link {} (-> {}:{})", link->id(), id, port.props["audio.channel"]);
+                logger::get()->debug("[patchbay] (relink) created {}, which maps {}->{}", link->id(), other.id,
+                                     port.props["audio.channel"]);
+
                 created.emplace(id, std::move(*link));
             }
         }
     }
 
-    void patchbay::impl::global_removed(std::uint32_t id)
+    template <>
+    void patchbay::impl::add_global<pw::node>(pw::node &node)
     {
-        nodes.erase(id);
-        created.erase(id);
+        auto id    = node.id();
+        auto props = node.info().props;
+
+        nodes[id].info = node.info();
+
+        logger::get()->trace("[patchbay] (add_global) new node: {} (name: \"{}\", app: \"{}\")", node.id(),
+                             props["node.name"], props["application.name"]);
+
+        on_node(id);
     }
 
-    void patchbay::impl::global_added(const pw::global &global)
+    template <>
+    void patchbay::impl::add_global<pw::link>(pw::link &link)
+    {
+        auto id   = link.id();
+        auto info = link.info();
+
+        links[id] = info;
+
+        logger::get()->trace(
+            "[patchbay] (add_global) new link: {} (input-node: {}, output-node: {}, input-port: {}, output-port: {})",
+            link.id(), info.input.node, info.output.node, info.input.port, info.output.port);
+
+        on_link(id);
+    }
+
+    template <>
+    void patchbay::impl::add_global<pw::port>(pw::port &port)
+    {
+        auto props = port.info().props;
+
+        if (!props.contains("node.id"))
+        {
+            logger::get()->warn("[patchbay] (add_global) {} has no parent", port.id());
+            return;
+        }
+
+        auto parent = std::stoull(props["node.id"]);
+        nodes[parent].ports.emplace_back(port.info());
+
+        logger::get()->trace("[patchbay] (add_global) new port: {} with parent {}", port.id(), parent);
+
+        /*
+        ? Yes. This belongs here, as the node is created **before** the ports.
+        */
+
+        on_node(parent);
+    }
+
+    template <>
+    void patchbay::impl::add_global<pw::metadata>(pw::metadata &data)
+    {
+        auto props = data.properties();
+
+        if (!props.contains("default.audio.sink"))
+        {
+            return;
+        }
+
+        auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
+
+        if (!parsed.has_value())
+        {
+            logger::get()->warn("[patchbay] (add_global) failed to parse speaker");
+            return;
+        }
+
+        logger::get()->debug("[patchbay] (add_global) speakers name: \"{}\"", parsed->name);
+
+        speaker.emplace(parsed->name);
+
+        for (const auto &[id, info] : nodes)
+        {
+            on_node(id);
+        }
+    }
+
+    template <typename T>
+    void patchbay::impl::bind(const pw::global &global)
+    {
+        auto bound = registry->bind<T>(global.id).get();
+
+        if (!bound.has_value())
+        {
+            logger::get()->warn("[patchbay] (bind) failed to bind {} (\"{}\"): {}", global.id, global.type,
+                                bound.error().message);
+            return;
+        }
+
+        add_global(bound.value());
+    }
+
+    template <>
+    void patchbay::impl::add_global<const pw::global>(const pw::global &global)
     {
         if (global.type == pw::node::type)
         {
-            auto node = registry->bind<pw::node>(global.id).get();
-
-            if (!node.has_value())
-            {
-                return;
-            }
-
-            nodes[global.id].info = node->info();
-
-            if (!speaker)
-            {
-                return;
-            }
-
-            if (node->info().props["node.name"] != speaker->name)
-            {
-                return;
-            }
-
-            logger::get()->info("found speakers: {}", global.id);
-            speaker->id = global.id;
-
-            return;
+            bind<pw::node>(global);
         }
-
-        if (global.type == pw::metadata::type)
+        else if (global.type == pw::metadata::type)
         {
-            auto metadata = registry->bind<pw::metadata>(global.id).get();
-
-            if (!metadata.has_value())
-            {
-                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, metadata.error().message);
-                return;
-            }
-
-            auto props = metadata->properties();
-
-            if (!props.contains("default.audio.sink"))
-            {
-                return;
-            }
-
-            auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
-
-            if (!parsed.has_value())
-            {
-                logger::get()->warn("failed to parse default speaker: {}",
-                                    static_cast<std::uint32_t>(parsed.error().ec));
-
-                return;
-            }
-
-            speaker.emplace(parsed->name);
-
-            auto node =
-                ranges::find_if(nodes, [&](auto &item) { return item.second.info.props["node.name"] == parsed->name; });
-
-            if (node == nodes.end())
-            {
-                return;
-            }
-
-            logger::get()->info("found speakers: {}", node->first);
-            speaker->id = node->first;
-
-            return;
+            bind<pw::metadata>(global);
         }
-
-        if (global.type == pw::port::type)
+        else if (global.type == pw::port::type)
         {
-            auto port = registry->bind<pw::port>(global.id).get();
-
-            if (!port.has_value())
-            {
-                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, port.error().message);
-                return;
-            }
-
-            auto props = port->info().props;
-
-            if (!props.contains("node.id"))
-            {
-                logger::get()->warn("{} has no parent", global.id);
-                return;
-            }
-
-            auto parent = std::stoull(props["node.id"]);
-            nodes[parent].ports.emplace_back(port->info());
-
-            //? Yes. This belongs here, as the node is created **before** the ports.
-            on_node(parent);
+            bind<pw::port>(global);
         }
-
-        if (global.type == pw::link::type)
+        else if (global.type == pw::link::type)
         {
-            auto link = registry->bind<pw::link>(global.id).get();
-
-            if (!link.has_value())
-            {
-                logger::get()->warn("failed to bind {} ({}): {}", global.id, global.type, link.error().message);
-                return;
-            }
-
-            links[global.id] = link->info();
-
-            on_link(global.id);
+            bind<pw::link>(global);
         }
+    }
+
+    void patchbay::impl::rem_global(std::uint32_t id)
+    {
+        nodes.erase(id);
+        created.erase(id);
     }
 
     void patchbay::impl::on_link(std::uint32_t id)
@@ -272,7 +284,8 @@ namespace vencord
 
         if (info.input.node != speaker->id)
         {
-            logger::get()->debug("ignoring {}: not connected to speaker", id);
+            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id,
+                                 info.input.node);
             return;
         }
 
@@ -296,6 +309,14 @@ namespace vencord
 
     void patchbay::impl::on_node(std::uint32_t id)
     {
+        auto &[info, ports] = nodes[id];
+
+        if (speaker && info.props["node.name"] == speaker->name)
+        {
+            logger::get()->debug("[patchbay] (on_node) speakers are {}", id);
+            speaker->id = id;
+        }
+
         if (include.empty())
         {
             return;
@@ -303,24 +324,24 @@ namespace vencord
 
         auto match = [&](const auto &prop)
         {
-            return nodes[id].info.props[prop.key] == prop.value;
+            return info.props[prop.key] == prop.value;
         };
 
         if (ranges::any_of(exclude, match))
         {
-            logger::get()->debug("ignoring {}: explicitly excluded", id);
+            logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
             return;
         }
 
         if (!ranges::any_of(include, match))
         {
-            logger::get()->debug("ignoring {}: no target matched", id);
+            logger::get()->debug("[patchbay] (on_node) {} is not included", id);
             return;
         }
 
-        if (nodes[id].ports.empty())
+        if (ports.empty())
         {
-            logger::get()->debug("ignoring {}: no ports", id);
+            logger::get()->debug("[patchbay] (on_node) {} has no ports", id);
             return;
         }
 
@@ -430,8 +451,8 @@ namespace vencord
 
         auto listener = registry->listen();
 
-        listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { global_removed(id); });
-        listener.on<pw::registry_event::global>([this](const auto &global) { global_added(global); });
+        listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { rem_global(id); });
+        listener.on<pw::registry_event::global>([this](const auto &global) { add_global(global); });
 
         sender.send(ready{});
 

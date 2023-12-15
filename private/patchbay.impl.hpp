@@ -66,8 +66,14 @@ namespace vencord
         void relink(std::uint32_t);
 
       private:
-        void global_removed(std::uint32_t);
-        void global_added(const pw::global &);
+        template <typename T>
+        void bind(const pw::global &);
+
+        template <typename T>
+        void add_global(T &);
+
+      private:
+        void rem_global(std::uint32_t);
 
       private:
         void on_link(std::uint32_t);
