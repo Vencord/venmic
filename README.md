@@ -65,6 +65,14 @@ The Rest-Server exposes three simple endpoints
     pnpm install
     ```
 
+## 🐛 Debugging
+
+When reporting an issue please make sure to set the environment variable `VENMIC_ENABLE_LOG`.
+
+If said variable is set venmic will output a lot of useful information to stdout and a log-file which can be found in `~/.local/state/venmic/venmic.log`.
+
+It is highly recommended to include this log file in your issue report otherwise we may not be able to help you!
+
 ## 🤝 Acknowledgements
 
 This project heavily relies on the following projects:
