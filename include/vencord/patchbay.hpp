@@ -7,12 +7,6 @@
 
 namespace vencord
 {
-    enum class target_mode
-    {
-        include,
-        exclude,
-    };
-
     struct prop
     {
         std::string key;
