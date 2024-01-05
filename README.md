@@ -35,6 +35,7 @@ The Rest-Server exposes three simple endpoints
     [
       { "key": "node.name", "value": "Chrome" }
     ]
+    "ignore_devices": true
   }
   </pre>
 
@@ -46,6 +47,9 @@ The Rest-Server exposes three simple endpoints
     * Links nodes that do not match given props
   * both `include` and `exclude`
     * Links all applications that match props in `include` and not those given in `exclude`
+
+  The setting `ignore_devices` is optional and will default to `true`.  
+  When enabled it will prevent hardware-devices like speakers and microphones from being linked to the virtual microphone.
   </blockquote>
 
 * (GET) `/unlink`
