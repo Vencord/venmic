@@ -22,6 +22,17 @@ std::optional<std::string> convert(Napi::Value value)
 }
 
 template <>
+std::optional<bool> convert(Napi::Value value)
+{
+    if (!value.IsBoolean())
+    {
+        return std::nullopt;
+    }
+
+    return value.ToBoolean();
+}
+
+template <>
 std::optional<vencord::prop> convert(Napi::Value value)
 {
     if (!value.IsObject())
@@ -148,8 +159,9 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
             return Napi::Boolean::New(env, false);
         }
 
-        auto include = to_array<vencord::prop>(data.Get("include"));
-        auto exclude = to_array<vencord::prop>(data.Get("exclude"));
+        auto include        = to_array<vencord::prop>(data.Get("include"));
+        auto exclude        = to_array<vencord::prop>(data.Get("exclude"));
+        auto ignore_devices = convert<bool>(data.Get("ignore_devices"));
 
         if (!include && !exclude)
         {
@@ -160,8 +172,11 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
             return Napi::Boolean::New(env, false);
         }
 
-        vencord::patchbay::get().link(include.value_or(std::vector<vencord::prop>{}),
-                                      exclude.value_or(std::vector<vencord::prop>{}));
+        vencord::patchbay::get().link({
+            .include        = include.value_or(std::vector<vencord::prop>{}),
+            .exclude        = exclude.value_or(std::vector<vencord::prop>{}),
+            .ignore_devices = ignore_devices.value_or(true),
+        });
 
         return Napi::Boolean::New(env, true);
     }

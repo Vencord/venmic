@@ -4,12 +4,6 @@
 #include <vencord/logger.hpp>
 #include <vencord/patchbay.hpp>
 
-struct targets
-{
-    std::vector<vencord::prop> include;
-    std::vector<vencord::prop> exclude;
-};
-
 template <>
 struct glz::meta<vencord::prop>
 {
@@ -18,10 +12,12 @@ struct glz::meta<vencord::prop>
 };
 
 template <>
-struct glz::meta<targets>
+struct glz::meta<vencord::link_options>
 {
-    using T                     = targets;
-    static constexpr auto value = object("include", &T::include, "exclude", &T::exclude);
+    using T                     = vencord::link_options;
+    static constexpr auto value = object("exclude", &T::exclude, //
+                                         "include", &T::include, //
+                                         "ignore_devices", &T::ignore_devices);
 };
 
 int main(int argc, char **args)
@@ -63,7 +59,7 @@ int main(int argc, char **args)
     server.Post("/link",
                 [](const auto &req, auto &response)
                 {
-                    targets parsed;
+                    vencord::link_options parsed;
 
                     auto error = glz::read<glz::opts{.error_on_missing_keys = true}>(parsed, req.body);
 
@@ -73,7 +69,7 @@ int main(int argc, char **args)
                         return;
                     }
 
-                    patchbay::get().link(parsed.include, parsed.exclude);
+                    patchbay::get().link(std::move(parsed));
 
                     response.status = 200;
                 });

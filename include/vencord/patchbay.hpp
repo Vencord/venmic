@@ -13,6 +13,15 @@ namespace vencord
         std::string value;
     };
 
+    struct link_options
+    {
+        std::vector<prop> include;
+        std::vector<prop> exclude;
+
+      public:
+        bool ignore_devices{true};
+    };
+
     using node = std::map<std::string, std::string>;
 
     class patchbay
@@ -29,7 +38,7 @@ namespace vencord
         patchbay();
 
       public:
-        void link(std::vector<prop> include, std::vector<prop> exclude);
+        void link(link_options options);
 
       public:
         void unlink();

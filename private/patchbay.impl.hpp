@@ -1,4 +1,5 @@
 #pragma once
+
 #include "patchbay.hpp"
 #include "message.hpp"
 
@@ -36,11 +37,10 @@ namespace vencord
         std::unique_ptr<cr_recipe::receiver> receiver;
 
       private:
-        std::vector<prop> include;
-        std::vector<prop> exclude;
+        link_options options;
 
       private:
-        std::unique_ptr<pw::node> mic;
+        std::unique_ptr<pw::node> virt_mic;
         std::optional<vencord::speaker> speaker;
         std::multimap<std::uint32_t, pw::link> created;
 

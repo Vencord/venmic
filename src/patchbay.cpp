@@ -13,12 +13,10 @@ namespace vencord
 
     patchbay::patchbay() : m_impl(std::make_unique<impl>()) {}
 
-    void patchbay::link(std::vector<prop> include, std::vector<prop> exclude)
+    void patchbay::link(link_options options)
     {
-        const auto request = set_target{std::move(include), std::move(exclude)};
-        m_impl->sender->send(request);
-
-        logger::get()->trace(R"([patchbay] (link) request: "{}")", glz::write_json(request));
+        m_impl->sender->send(std::move(options));
+        logger::get()->trace(R"([patchbay] (link) request: "{}")", glz::write_json(options));
     }
 
     void patchbay::unlink()

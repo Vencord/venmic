@@ -7,10 +7,9 @@
 #include <glaze/glaze.hpp>
 
 #include <range/v3/view.hpp>
-#include <range/v3/range.hpp>
-
-#include <range/v3/action.hpp>
 #include <range/v3/algorithm.hpp>
+
+#include <rohrkabel/device/device.hpp>
 
 namespace vencord
 {
@@ -65,14 +64,14 @@ namespace vencord
             core->update();
         }
 
-        mic = std::make_unique<pw::node>(std::move(*node));
+        virt_mic = std::make_unique<pw::node>(std::move(*node));
     }
 
     void patchbay::impl::relink(std::uint32_t id)
     {
         created.erase(id);
 
-        if (!mic)
+        if (!virt_mic)
         {
             return;
         }
@@ -82,16 +81,23 @@ namespace vencord
             return;
         }
 
-        if (id == mic->id())
+        if (id == virt_mic->id())
         {
-            logger::get()->warn("[patchbay] (relink) prevented link to self", id, mic->id());
+            logger::get()->warn("[patchbay] (relink) prevented link to self", id, virt_mic->id());
             return;
         }
 
-        logger::get()->debug("[patchbay] (relink) linking {} [with mic = {}]", id, mic->id());
-
         auto &target = nodes[id];
-        auto &source = nodes[mic->id()];
+
+        if (options.ignore_devices && !target.info.props["device.id"].empty())
+        {
+            logger::get()->warn("[patchbay] (relink) prevented link to device", id, virt_mic->id());
+            return;
+        }
+
+        logger::get()->debug("[patchbay] (relink) linking {} [with mic = {}]", id, virt_mic->id());
+
+        auto &source = nodes[virt_mic->id()];
 
         auto is_output = [](const auto &item)
         {
@@ -275,7 +281,7 @@ namespace vencord
 
     void patchbay::impl::on_link(std::uint32_t id)
     {
-        if (!include.empty() || !speaker)
+        if (!options.include.empty() || !speaker)
         {
             return;
         }
@@ -297,7 +303,7 @@ namespace vencord
             return output.info.props[prop.key] == prop.value;
         };
 
-        if (ranges::any_of(exclude, match))
+        if (ranges::any_of(options.exclude, match))
         {
             return;
         }
@@ -317,7 +323,7 @@ namespace vencord
             speaker->id = id;
         }
 
-        if (include.empty())
+        if (options.include.empty())
         {
             return;
         }
@@ -327,13 +333,13 @@ namespace vencord
             return info.props[prop.key] == prop.value;
         };
 
-        if (ranges::any_of(exclude, match))
+        if (ranges::any_of(options.exclude, match))
         {
             logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
             return;
         }
 
-        if (!ranges::any_of(include, match))
+        if (!ranges::any_of(options.include, match))
         {
             logger::get()->debug("[patchbay] (on_node) {} is not included", id);
             return;
@@ -392,17 +398,16 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, set_target &req)
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, link_options &req)
     {
-        if (!mic)
+        if (!virt_mic)
         {
             create_mic();
         }
 
         created.clear();
 
-        include = std::move(req.include);
-        exclude = std::move(req.exclude);
+        options = std::move(req);
 
         for (const auto &[id, info] : nodes)
         {
@@ -418,12 +423,8 @@ namespace vencord
     template <>
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] unset_target &)
     {
-        include.clear();
-        exclude.clear();
-
         created.clear();
-
-        mic.reset();
+        virt_mic.reset();
     }
 
     template <>
