@@ -54,10 +54,8 @@ jobs:
       - name: 🦥 Cache Dependencies
         uses: actions/cache@v3
         with:
-          key: venmic-deps-cache
-          path: |
-            build/_deps
-            node_modules
+          key: venmic-arm-deps
+          path: build/_deps
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185
