@@ -16,7 +16,7 @@ export class PatchBay
     unlink(): void;
     
     list<T extends string = DefaultProps>(props?: T[]): Record<LiteralUnion<T, string>, string>[];
-    link(data: {include: Prop[], exclude: Prop[], ignore_devices?: boolean}): boolean;
+    link(data: {include?: Prop[], exclude?: Prop[], ignore_devices?: boolean}): boolean;
 
     static hasPipeWire(): boolean;
 }
