@@ -61,7 +61,7 @@ int main(int argc, char **args)
                 {
                     vencord::link_options parsed;
 
-                    auto error = glz::read<glz::opts{.error_on_missing_keys = true}>(parsed, req.body);
+                    const auto error = glz::read_json(parsed, req.body);
 
                     if (error)
                     {
