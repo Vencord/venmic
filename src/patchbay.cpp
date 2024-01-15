@@ -15,8 +15,8 @@ namespace vencord
 
     void patchbay::link(link_options options)
     {
-        m_impl->sender->send(std::move(options));
         logger::get()->trace(R"([patchbay] (link) request: "{}")", glz::write_json(options));
+        m_impl->sender->send(std::move(options));
     }
 
     void patchbay::unlink()
