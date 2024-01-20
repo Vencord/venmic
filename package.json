@@ -9,7 +9,7 @@
     "audio"
   ],
   "private": false,
-  "license": "MIT",
+  "license": "LGPL-3.0-only",
   "author": "Curve (https://github.com/Curve)",
   "version": "3.2.3",
   "main": "./lib/index.js",
