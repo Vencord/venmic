@@ -9,7 +9,7 @@
     "audio"
   ],
   "private": false,
-  "license": "LGPL-3.0-only",
+  "license": "MPL-2.0",
   "author": "Curve (https://github.com/Curve)",
   "version": "3.2.3",
   "main": "./lib/index.js",
