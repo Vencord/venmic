@@ -53,6 +53,10 @@ namespace vencord
         std::shared_ptr<pw::registry> registry;
 
       private:
+        std::unique_ptr<pw::metadata> metadata;
+        std::optional<std::uint32_t> lettuce_target; // https://github.com/Vencord/venmic/issues/15
+
+      private:
         std::atomic_bool should_exit{false};
 
       public:
@@ -63,6 +67,7 @@ namespace vencord
 
       private:
         void create_mic();
+        void cleanup(bool);
         void relink(std::uint32_t);
 
       private:

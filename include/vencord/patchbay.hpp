@@ -20,6 +20,7 @@ namespace vencord
 
       public:
         bool ignore_devices{true};
+        std::vector<prop> workaround;
     };
 
     using node = std::map<std::string, std::string>;

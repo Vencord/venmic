@@ -20,9 +20,10 @@ namespace vencord
 
     patchbay::impl::~impl()
     {
+        cleanup(true);
         should_exit = true;
-        sender->send(quit{});
 
+        sender->send(quit{});
         thread.join();
     }
 
@@ -65,6 +66,24 @@ namespace vencord
         }
 
         virt_mic = std::make_unique<pw::node>(std::move(*node));
+    }
+
+    void patchbay::impl::cleanup(bool mic)
+    {
+        created.clear();
+
+        if (metadata && lettuce_target)
+        {
+            metadata->clear_property(lettuce_target.value(), "target.node");
+            metadata->clear_property(lettuce_target.value(), "target.object");
+        }
+
+        if (!mic)
+        {
+            return;
+        }
+
+        virt_mic.reset();
     }
 
     void patchbay::impl::relink(std::uint32_t id)
@@ -165,10 +184,40 @@ namespace vencord
 
         nodes[id].info = node.info();
 
-        logger::get()->trace("[patchbay] (add_global) new node: {} (name: \"{}\", app: \"{}\")", node.id(),
-                             props["node.name"], props["application.name"]);
+        logger::get()->trace(R"([patchbay] (add_global) new node: {} (name: "{}", app: "{}"))", id, props["node.name"],
+                             props["application.name"]);
 
-        on_node(id);
+        if (options.workaround.empty() || !metadata || !virt_mic)
+        {
+            return on_node(id);
+        }
+
+        logger::get()->trace("[patchbay] (add_global) workaround is active ({})", glz::write_json(options.workaround));
+
+        auto match = [&](const auto &prop)
+        {
+            return props[prop.key] == prop.value;
+        };
+
+        if (!ranges::all_of(options.workaround, match))
+        {
+            return on_node(id);
+        }
+
+        const auto serial = virt_mic->info().props["object.serial"];
+
+        logger::get()->debug("[patchbay] (add_global) applying workaround to {} (mic = {}, serial = {})", id,
+                             virt_mic->id(), serial);
+
+        // https://github.com/Vencord/venmic/issues/13#issuecomment-1884975782
+
+        metadata->set_property(id, "target.object", "Spa:Id", serial);
+        metadata->set_property(id, "target.node", "Spa:Id", fmt::format("{}", virt_mic->id()));
+
+        lettuce_target.emplace(id);
+        options.workaround.clear();
+
+        core->update();
     }
 
     template <>
@@ -212,12 +261,16 @@ namespace vencord
     template <>
     void patchbay::impl::add_global<pw::metadata>(pw::metadata &data)
     {
-        auto props = data.properties();
+        auto props      = data.properties();
+        const auto name = data.props()["metadata.name"];
 
-        if (!props.contains("default.audio.sink"))
+        if (name != "default")
         {
             return;
         }
+
+        metadata = std::make_unique<pw::metadata>(std::move(data));
+        logger::get()->info("[patchbay] (add_global) found metadata: {}", metadata->id());
 
         auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
 
@@ -405,7 +458,7 @@ namespace vencord
             create_mic();
         }
 
-        created.clear();
+        cleanup(false);
 
         options = std::move(req);
 
@@ -423,8 +476,7 @@ namespace vencord
     template <>
     void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] unset_target &)
     {
-        created.clear();
-        virt_mic.reset();
+        cleanup(true);
     }
 
     template <>
