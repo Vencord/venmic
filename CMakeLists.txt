@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 3.2.3)
+project(venmic LANGUAGES CXX VERSION 3.3.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -66,6 +66,12 @@ target_sources(${PROJECT_NAME} PRIVATE ${src})
 
 target_include_directories(${PROJECT_NAME} PUBLIC  "include")
 target_include_directories(${PROJECT_NAME} PRIVATE "include/vencord" "private")
+
+# --------------------------------------------------------------------------------------------------------
+# Setup compile definitions
+# --------------------------------------------------------------------------------------------------------
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC VENMIC_VERSION="${PROJECT_VERSION}")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Dependencies

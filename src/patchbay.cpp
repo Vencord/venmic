@@ -37,12 +37,13 @@ namespace vencord
 
         if (!has_pipewire())
         {
-            throw std::runtime_error("Not running PipeWire");
+            throw std::runtime_error("not running pipewire");
         }
 
         if (!instance)
         {
             instance = std::unique_ptr<patchbay>(new patchbay);
+            logger::get()->info("[patchbay] (get) running venmic {}", VENMIC_VERSION);
         }
 
         return *instance;
