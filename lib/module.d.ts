@@ -22,7 +22,7 @@ export interface LinkData
     exclude: Prop[];
 
     ignore_devices?: boolean;
-    workaround?: Prop;
+    workaround?: Prop[];
 }
 
 
