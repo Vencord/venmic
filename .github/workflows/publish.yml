@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🏗️ Build Addon
         uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185
@@ -34,7 +34,7 @@ jobs:
             pnpm install --ignore-scripts && pnpm run install
 
       - name: ♻️ Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: addon-x86_64
           path: build/Release
@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🤖 Setup Qemu
         uses: docker/setup-qemu-action@v3
@@ -52,7 +52,7 @@ jobs:
           platforms: "arm64"
 
       - name: 🦥 Cache Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: venmic-arm-deps
           path: build/_deps
@@ -73,7 +73,7 @@ jobs:
             pnpm install --ignore-scripts && pnpm run install
 
       - name: ♻️ Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: addon-arm64
           path: build/Release
@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🛑 Check Tag
         run: |
@@ -97,7 +97,7 @@ jobs:
           fi
 
       - name: 🍃 Install Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           registry-url: "https://registry.npmjs.org"
