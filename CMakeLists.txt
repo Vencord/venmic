@@ -87,7 +87,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           tl-expected
-  VERSION        1.1
+  VERSION        1.1.0
   GIT_REPOSITORY "https://github.com/TartanLlama/expected"
 )
 
@@ -105,13 +105,13 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        2.0.6
+  VERSION        2.1.0
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
 CPMFindPackage(
   NAME           spdlog
-  VERSION        1.12.0
+  VERSION        1.13.0
   GIT_REPOSITORY "https://github.com/gabime/spdlog"
 )
 
