@@ -19,6 +19,7 @@ The node-module is mainly intended for internal usage by [Vesktop](https://githu
 For a usage example, see the following Vesktop source files:
 - [src/main/venmic.ts](https://github.com/Vencord/Vesktop/blob/main/src/main/venmic.ts)
 - [src/renderer/patches/screenShareAudio.ts](https://github.com/Vencord/Vesktop/blob/main/src/renderer/patches/screenShareAudio.ts)
+- src/renderer/components/ScreenSharePicker.tsx: [1](https://github.com/Vencord/Vesktop/blob/4abae9c7082081dcae667916d9608e23adf688a9/src/renderer/components/ScreenSharePicker.tsx#L109-L115), [2](https://github.com/Vencord/Vesktop/blob/4abae9c7082081dcae667916d9608e23adf688a9/src/renderer/components/ScreenSharePicker.tsx#L253-L256), [3](https://github.com/Vencord/Vesktop/blob/4abae9c7082081dcae667916d9608e23adf688a9/src/renderer/components/ScreenSharePicker.tsx#L94)
 
 The Rest-Server exposes three simple endpoints
 * (POST) `/list`
