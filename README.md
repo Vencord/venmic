@@ -15,7 +15,10 @@ venmic - screenshare support for pipewire
 
 _venmic_ can be used as node-module or as a local rest-server.
 
-The node-module is intended for internal usage by [Vesktop](https://github.com/Vencord/Vesktop).
+The node-module is mainly intended for internal usage by [Vesktop](https://github.com/Vencord/Vesktop).
+For a usage example, see the following Vesktop source files:
+- [src/main/venmic.ts](https://github.com/Vencord/Vesktop/blob/main/src/main/venmic.ts)
+- [src/renderer/patches/screenShareAudio.ts](https://github.com/Vencord/Vesktop/blob/main/src/renderer/patches/screenShareAudio.ts)
 
 The Rest-Server exposes three simple endpoints
 * (POST) `/list`
