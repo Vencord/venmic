@@ -31,7 +31,7 @@ include("../cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           cpp-httplib
-  VERSION        0.14.1
+  VERSION        0.15.3
   GIT_REPOSITORY "https://github.com/yhirose/cpp-httplib"
 )
 
