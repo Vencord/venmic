@@ -44,6 +44,7 @@ namespace vencord
 
         if (receiver->recv_as<ready>().success)
         {
+            logger::get()->trace("[patchbay] (init) pw_receiver is ready");
             return;
         }
 
@@ -434,8 +435,10 @@ namespace vencord
                         | ranges::views::filter(desireable) //
                         | ranges::views::filter(can_output);
 
-        // Some nodes update their props (metadata) over time, and there is no pipewire event to catch this
-        // (unless we have them bound constantly). Thus we re-bind them.
+        /*
+         * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
+         * we simply re-bind it to fetch the updates only when needed.
+         */
 
         for (auto &[id, node] : filtered)
         {
