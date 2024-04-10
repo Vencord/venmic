@@ -81,7 +81,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        3.1
+  VERSION        4.1
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
@@ -105,7 +105,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        2.4.0
+  VERSION        2.4.5
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 

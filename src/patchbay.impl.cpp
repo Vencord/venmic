@@ -87,6 +87,23 @@ namespace vencord
         virt_mic.reset();
     }
 
+    void patchbay::impl::relink_all()
+    {
+        cleanup(false);
+
+        for (const auto &[id, info] : nodes)
+        {
+            on_node(id);
+        }
+
+        for (const auto &[id, info] : links)
+        {
+            on_link(id);
+        }
+
+        logger::get()->debug("[patchbay] (relink_all) relinked all targets");
+    }
+
     void patchbay::impl::relink(std::uint32_t id)
     {
         created.erase(id);
@@ -177,6 +194,29 @@ namespace vencord
         }
     }
 
+    void patchbay::impl::meta_update(std::string_view key, pw::metadata_property prop)
+    {
+        logger::get()->debug(R"([patchbay] (meta_update) metadata property changed: "{}" (value: "{}"))", key,
+                             prop.value);
+
+        if (key != "default.audio.sink")
+        {
+            return;
+        }
+
+        auto parsed = glz::read_json<pw_metadata_name>(prop.value);
+
+        if (!parsed.has_value())
+        {
+            logger::get()->warn("[patchbay] (meta_update) failed to parse speaker");
+            return;
+        }
+
+        speaker.emplace(parsed->name);
+
+        relink_all();
+    }
+
     template <>
     void patchbay::impl::add_global<pw::node>(pw::node &node)
     {
@@ -265,13 +305,15 @@ namespace vencord
         auto props      = data.properties();
         const auto name = data.props()["metadata.name"];
 
+        logger::get()->trace(R"([patchbay] (add_global) new metadata: {} (name: "{}"))", data.id(), name);
+
         if (name != "default")
         {
             return;
         }
 
         metadata = std::make_unique<pw::metadata>(std::move(data));
-        logger::get()->info("[patchbay] (add_global) found metadata: {}", metadata->id());
+        logger::get()->info("[patchbay] (add_global) found default metadata: {}", metadata->id());
 
         auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
 
@@ -281,9 +323,17 @@ namespace vencord
             return;
         }
 
-        logger::get()->debug("[patchbay] (add_global) speakers name: \"{}\"", parsed->name);
+        listener = std::make_unique<pw::metadata_listener>(metadata->listen());
+        logger::get()->debug("[patchbay] (add_global) speaker name: \"{}\"", parsed->name);
 
         speaker.emplace(parsed->name);
+
+        listener->on<pw::metadata_event::property>(
+            [this](auto... args)
+            {
+                meta_update(args...);
+                return 0;
+            });
 
         for (const auto &[id, info] : nodes)
         {
@@ -309,6 +359,8 @@ namespace vencord
     template <>
     void patchbay::impl::add_global<const pw::global>(const pw::global &global)
     {
+        logger::get()->trace(R"([patchbay] (add_global) new global: {} (type: "{}"))", global.id, global.type);
+
         if (global.type == pw::node::type)
         {
             bind<pw::node>(global);
@@ -461,19 +513,9 @@ namespace vencord
             create_mic();
         }
 
-        cleanup(false);
-
         options = std::move(req);
 
-        for (const auto &[id, info] : nodes)
-        {
-            on_node(id);
-        }
-
-        for (const auto &[id, info] : links)
-        {
-            on_link(id);
-        }
+        relink_all();
     }
 
     template <>

@@ -6,12 +6,18 @@
 #include <map>
 #include <thread>
 #include <atomic>
+#include <string_view>
+
+#include <rohrkabel/global.hpp>
 
 #include <rohrkabel/node/node.hpp>
 #include <rohrkabel/port/port.hpp>
 #include <rohrkabel/link/link.hpp>
 
+#include <rohrkabel/metadata/events.hpp>
 #include <rohrkabel/metadata/metadata.hpp>
+
+#include <rohrkabel/registry/events.hpp>
 #include <rohrkabel/registry/registry.hpp>
 
 namespace vencord
@@ -40,8 +46,11 @@ namespace vencord
         link_options options;
 
       private:
-        std::unique_ptr<pw::node> virt_mic;
         std::optional<vencord::speaker> speaker;
+        std::unique_ptr<pw::metadata_listener> listener;
+
+      private:
+        std::unique_ptr<pw::node> virt_mic;
         std::multimap<std::uint32_t, pw::link> created;
 
       private:
@@ -68,7 +77,13 @@ namespace vencord
       private:
         void create_mic();
         void cleanup(bool);
+
+      private:
+        void relink_all();
         void relink(std::uint32_t);
+
+      private:
+        void meta_update(std::string_view, pw::metadata_property);
 
       private:
         template <typename T>
