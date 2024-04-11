@@ -35,9 +35,9 @@ namespace vencord
     {
         static std::unique_ptr<patchbay> instance;
 
-        if (!has_pipewire())
+        if (!instance && !has_pipewire())
         {
-            throw std::runtime_error("not running pipewire");
+            logger::get()->warn("[patchbay] (get) pipewire was not detected as main audio server");
         }
 
         if (!instance)
