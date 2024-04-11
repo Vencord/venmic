@@ -113,7 +113,7 @@ namespace vencord
 
         if (id == mic_id)
         {
-            logger::get()->warn("[patchbay] (link) prevented link to self", id, mic_id);
+            logger::get()->warn("[patchbay] (link) prevented link to self");
             return;
         }
 
@@ -127,7 +127,7 @@ namespace vencord
 
         if (options.ignore_devices && !target.info.props["device.id"].empty())
         {
-            logger::get()->warn("[patchbay] (link) prevented link to device", id, mic_id);
+            logger::get()->warn("[patchbay] (link) prevented link to device: {}", id);
             return;
         }
 
