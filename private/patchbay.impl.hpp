@@ -87,10 +87,13 @@ namespace vencord
 
       private:
         template <typename T>
-        void bind(const pw::global &);
+        void bind(pw::global &);
+
+      public:
+        void add_global(pw::global &);
 
         template <typename T>
-        void add_global(T &);
+        void add_global(T &, pw::global &);
 
       private:
         void rem_global(std::uint32_t);

@@ -218,7 +218,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::add_global<pw::node>(pw::node &node)
+    void patchbay::impl::add_global<pw::node>(pw::node &node, pw::global &)
     {
         auto id    = node.id();
         auto props = node.info().props;
@@ -262,7 +262,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::add_global<pw::link>(pw::link &link)
+    void patchbay::impl::add_global<pw::link>(pw::link &link, pw::global &)
     {
         auto id   = link.id();
         auto info = link.info();
@@ -277,7 +277,7 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::add_global<pw::port>(pw::port &port)
+    void patchbay::impl::add_global<pw::port>(pw::port &port, pw::global &)
     {
         auto props = port.info().props;
 
@@ -300,10 +300,10 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::add_global<pw::metadata>(pw::metadata &data)
+    void patchbay::impl::add_global<pw::metadata>(pw::metadata &data, pw::global &global)
     {
         auto props      = data.properties();
-        const auto name = data.props()["metadata.name"];
+        const auto name = global.props["metadata.name"];
 
         logger::get()->trace(R"([patchbay] (add_global) new metadata: {} (name: "{}"))", data.id(), name);
 
@@ -342,7 +342,7 @@ namespace vencord
     }
 
     template <typename T>
-    void patchbay::impl::bind(const pw::global &global)
+    void patchbay::impl::bind(pw::global &global)
     {
         auto bound = registry->bind<T>(global.id).get();
 
@@ -353,11 +353,10 @@ namespace vencord
             return;
         }
 
-        add_global(bound.value());
+        add_global(bound.value(), global);
     }
 
-    template <>
-    void patchbay::impl::add_global<const pw::global>(const pw::global &global)
+    void patchbay::impl::add_global(pw::global &global)
     {
         logger::get()->trace(R"([patchbay] (add_global) new global: {} (type: "{}"))", global.id, global.type);
 
@@ -550,7 +549,7 @@ namespace vencord
         auto listener = registry->listen();
 
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { rem_global(id); });
-        listener.on<pw::registry_event::global>([this](const auto &global) { add_global(global); });
+        listener.on<pw::registry_event::global>([this](auto global) { add_global(global); });
 
         sender.send(ready{});
 
