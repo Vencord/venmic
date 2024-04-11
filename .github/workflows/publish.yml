@@ -57,6 +57,7 @@ jobs:
       - name: 🦥 Cache Dependencies
         uses: actions/cache@v4
         with:
+          enableCrossOsArchive: true
           key: venmic-arm
           path: build
 
