@@ -56,8 +56,11 @@ The Rest-Server exposes three simple endpoints
   The setting `ignore_devices` is optional and will default to `true`.  
   When enabled it will prevent hardware-devices like speakers and microphones from being linked to the virtual microphone.
 
+  The setting `only_default_speakers` is optional and will default to `true`.  
+  When enabled it will prevent linking against nodes that don't play to the default speaker.
+
   The setting `workaround` is also optional and will default to an empty array.  
-  When set, venmic will redirect the first node that matches the all of the specified properties to itself.
+  When set, venmic will redirect the first node that matches all of the specified properties to itself.
   </blockquote>
 
 * (GET) `/unlink`

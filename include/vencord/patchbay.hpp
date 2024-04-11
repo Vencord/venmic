@@ -18,8 +18,10 @@ namespace vencord
         std::vector<prop> include;
         std::vector<prop> exclude;
 
-      public:
         bool ignore_devices{true};
+        bool only_default_speakers{true};
+
+      public:
         std::vector<prop> workaround;
     };
 

@@ -22,6 +22,8 @@ export interface LinkData
     exclude: Prop[];
 
     ignore_devices?: boolean;
+    only_default_speakers?: boolean;
+    
     workaround?: Prop[];
 }
 

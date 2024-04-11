@@ -259,22 +259,30 @@ namespace vencord
 
     void patchbay::impl::on_link(std::uint32_t id)
     {
-        if (!speaker || !options.include.empty())
+        if (!options.include.empty() || (options.only_default_speakers && !speaker))
         {
             return;
         }
 
         auto &info = links[id];
 
-        if (info.input.node != speaker->id)
+        const auto output_id = info.output.node;
+        const auto input_id  = info.input.node;
+
+        if (options.only_default_speakers && input_id != speaker->id)
         {
-            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id,
-                                 info.input.node);
+            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id, input_id);
             return;
         }
 
-        const auto node = info.output.node;
-        auto &output    = nodes[node]; // The node emitting sound
+        auto &output = nodes[output_id]; // The node emitting sound
+        auto &input  = nodes[input_id];  // The node receiving sound
+
+        if (!options.only_default_speakers && input.info.props["device.id"].empty())
+        {
+            logger::get()->trace("[patchbay] (on_link) {} is not playing to a device: {}", id, input_id);
+            return;
+        }
 
         auto match = [&output](const auto &prop)
         {
@@ -288,7 +296,7 @@ namespace vencord
 
         core->update();
 
-        link(node);
+        link(output_id);
     }
 
     void patchbay::impl::on_node(std::uint32_t id)
@@ -439,9 +447,13 @@ namespace vencord
         logger::get()->info("[patchbay] (handle) found default metadata: {}", global.id);
 
         meta_listener->on<pw::metadata_event::property>(
-            [this]<typename... T>(T &&...args)
+            [this](const char *key, auto property)
             {
-                meta_update(std::forward<T>(args)...);
+                if (key)
+                {
+                    meta_update(key, std::move(property));
+                }
+
                 return 0;
             });
 

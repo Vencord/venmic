@@ -159,10 +159,11 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
             return Napi::Boolean::New(env, false);
         }
 
-        auto include        = to_array<vencord::prop>(data.Get("include"));
-        auto exclude        = to_array<vencord::prop>(data.Get("exclude"));
-        auto ignore_devices = convert<bool>(data.Get("ignore_devices"));
-        auto workaround     = to_array<vencord::prop>(data.Get("workaround"));
+        auto include               = to_array<vencord::prop>(data.Get("include"));
+        auto exclude               = to_array<vencord::prop>(data.Get("exclude"));
+        auto ignore_devices        = convert<bool>(data.Get("ignore_devices"));
+        auto only_default_speakers = convert<bool>(data.Get("only_default_speakers"));
+        auto workaround            = to_array<vencord::prop>(data.Get("workaround"));
 
         if (!include && !exclude)
         {
@@ -174,10 +175,11 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         }
 
         vencord::patchbay::get().link({
-            .include        = include.value_or(std::vector<vencord::prop>{}),
-            .exclude        = exclude.value_or(std::vector<vencord::prop>{}),
-            .ignore_devices = ignore_devices.value_or(true),
-            .workaround     = workaround.value_or(std::vector<vencord::prop>{}),
+            .include               = include.value_or(std::vector<vencord::prop>{}),
+            .exclude               = exclude.value_or(std::vector<vencord::prop>{}),
+            .ignore_devices        = ignore_devices.value_or(true),
+            .only_default_speakers = only_default_speakers.value_or(true),
+            .workaround            = workaround.value_or(std::vector<vencord::prop>{}),
         });
 
         return Napi::Boolean::New(env, true);

@@ -34,7 +34,10 @@ assert.throws(() => patchbay.link({ include: {} }), /key-value/ig);
 
 assert.doesNotThrow(() => patchbay.link({ include: [{ key: "node.name", value: "Firefox" }] }));
 assert.doesNotThrow(() => patchbay.link({ exclude: [{ key: "node.name", value: "Firefox" }] }));
-assert.doesNotThrow(() => patchbay.link({ exclude: [{ key: "node.name", value: "Firefox" }], ignore_devices: true }));
+
 assert.doesNotThrow(() => patchbay.link({ include: [{ key: "node.name", value: "Firefox" }], exclude: [{ key: "object.id", value: "100" }] }));
+
+assert.doesNotThrow(() => patchbay.link({ exclude: [{ key: "node.name", value: "Firefox" }], ignore_devices: true }));
+assert.doesNotThrow(() => patchbay.link({ exclude: [{ key: "node.name", value: "Firefox" }], ignore_devices: true, only_default_speakers: true }));
 
 assert.doesNotThrow(() => patchbay.unlink());
