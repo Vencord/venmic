@@ -4,11 +4,10 @@
 
 #include <stdexcept>
 
-#include <glaze/glaze.hpp>
-
 #include <range/v3/view.hpp>
 #include <range/v3/algorithm.hpp>
 
+#include <glaze/glaze.hpp>
 #include <rohrkabel/device/device.hpp>
 
 namespace vencord
@@ -21,10 +20,9 @@ namespace vencord
     patchbay::impl::~impl()
     {
         cleanup(true);
-        should_exit = true;
 
+        should_exit = true;
         sender->send(quit{});
-        thread.join();
     }
 
     patchbay::impl::impl()
@@ -53,12 +51,10 @@ namespace vencord
 
     void patchbay::impl::create_mic()
     {
-        auto node = core->create<pw::node>({"adapter",
-                                            {{"audio.channels", "2"},
-                                             {"audio.position", "FL,FR"},
-                                             {"node.name", "vencord-screen-share"},
-                                             {"media.class", "Audio/Source/Virtual"},
-                                             {"factory.name", "support.null-audio-sink"}}})
+        auto node = core->create<pw::node>(pw::null_sink_factory{
+                                               .name      = "vencord-screen-share",
+                                               .positions = {"FL", "FR"},
+                                           })
                         .get();
 
         while (nodes[node->id()].ports.size() < 4)
@@ -67,6 +63,8 @@ namespace vencord
         }
 
         virt_mic = std::make_unique<pw::node>(std::move(*node));
+
+        logger::get()->info("[patchbay] (create_mic) created: {}", virt_mic->id());
     }
 
     void patchbay::impl::cleanup(bool mic)
@@ -87,7 +85,7 @@ namespace vencord
         virt_mic.reset();
     }
 
-    void patchbay::impl::relink_all()
+    void patchbay::impl::reload()
     {
         cleanup(false);
 
@@ -101,26 +99,27 @@ namespace vencord
             on_link(id);
         }
 
-        logger::get()->debug("[patchbay] (relink_all) relinked all targets");
+        logger::get()->debug("[patchbay] (reload) finished");
     }
 
-    void patchbay::impl::relink(std::uint32_t id)
+    void patchbay::impl::link(std::uint32_t id)
     {
-        created.erase(id);
-
         if (!virt_mic)
         {
             return;
         }
 
-        if (!nodes.contains(id))
+        const auto mic_id = virt_mic->id();
+
+        if (id == mic_id)
         {
+            logger::get()->warn("[patchbay] (link) prevented link to self", id, mic_id);
             return;
         }
 
-        if (id == virt_mic->id())
+        if (!nodes.contains(id))
         {
-            logger::get()->warn("[patchbay] (relink) prevented link to self", id, virt_mic->id());
+            logger::get()->warn("[patchbay] (link) called with bad node: {}", id);
             return;
         }
 
@@ -128,13 +127,52 @@ namespace vencord
 
         if (options.ignore_devices && !target.info.props["device.id"].empty())
         {
-            logger::get()->warn("[patchbay] (relink) prevented link to device", id, virt_mic->id());
+            logger::get()->warn("[patchbay] (link) prevented link to device", id, mic_id);
             return;
         }
 
-        logger::get()->debug("[patchbay] (relink) linking {} [with mic = {}]", id, virt_mic->id());
+        logger::get()->debug("[patchbay] (link) linking {}", id);
 
-        auto &source = nodes[virt_mic->id()];
+        auto mapping = map_ports(target);
+
+        for (auto [it, end] = created.equal_range(id); it != end; ++it)
+        {
+            auto equal = [info = it->second.info()](const auto &map)
+            {
+                return map.first.id == info.input.port && map.second.id == info.output.port;
+            };
+
+            std::erase_if(mapping, equal);
+        }
+
+        for (auto [mic_port, target_port] : mapping)
+        {
+            auto link = core->create<pw::link>(pw::link_factory{
+                                                   mic_port.id,
+                                                   target_port.id,
+                                               })
+                            .get();
+
+            if (!link.has_value())
+            {
+                logger::get()->warn("[patchbay] (link) failed to link {} (mic) -> {} (node): {}", mic_port.id,
+                                    target_port.id, link.error().message);
+
+                return;
+            }
+
+            logger::get()->debug("[patchbay] (link) created {}: {} (mic) -> {} (node) (channel: {})", link->id(),
+                                 mic_port.id, target_port.id, target_port.props["audio.channel"]);
+
+            created.emplace(id, std::move(*link));
+        }
+
+        logger::get()->debug("[patchbay] (link) linked all ports of {}", id);
+    }
+
+    port_map patchbay::impl::map_ports(node_with_ports &target)
+    {
+        port_map rtn;
 
         auto is_output = [](const auto &item)
         {
@@ -145,25 +183,33 @@ namespace vencord
             return item.direction == pw::port_direction::input;
         };
 
-        auto target_ports = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
-        auto source_ports = source.ports | ranges::views::filter(is_input);
+        auto &mic       = nodes[virt_mic->id()];
+        auto mic_inputs = mic.ports | ranges::views::filter(is_input);
 
-        logger::get()->debug("[patchbay] (relink) {} has {} port(s)", id, target_ports.size());
+        const auto id       = target.info.id;
+        auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
 
-        for (auto &port : target_ports)
+        if (target_outputs.empty())
         {
-            auto matching_channel = [&](auto &item)
+            logger::get()->warn("[patchbay] (map_ports) {} has no ports", id);
+            return rtn;
+        }
+
+        const auto is_mono = target_outputs.size() == 1;
+
+        if (is_mono)
+        {
+            logger::get()->debug("[patchbay] (map_ports) {} is mono", id);
+        }
+
+        for (auto &port : target_outputs)
+        {
+            auto matching_channel = [is_mono, &port](auto &item)
             {
-                if (target_ports.size() == 1)
+                if (is_mono)
                 {
-                    logger::get()->debug("[patchbay] (relink) {} is mono", item.id);
                     return true;
                 }
-
-                /*
-                 * Sometimes, for whatever reason, the "audio.channel" of a venmic port may be "UNK", to circumvent any
-                 * issues regarding this we'll fallback to "port.id"
-                 */
 
                 if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"] == "UNK")
                 {
@@ -173,25 +219,18 @@ namespace vencord
                 return item.props["audio.channel"] == port.props["audio.channel"];
             };
 
-            auto others = source_ports | ranges::views::filter(matching_channel) | ranges::to<std::vector>;
-            logger::get()->debug("[patchbay] (relink) {} maps to {} other(s)", port.id, others.size());
+            auto mapping =
+                mic_inputs                                                                                          //
+                | ranges::views::filter(matching_channel)                                                           //
+                | ranges::views::transform([port](const auto &mic_port) { return std::make_pair(mic_port, port); }) //
+                | ranges::to<std::vector>;
 
-            for (auto &other : others)
-            {
-                auto link = core->create<pw::link, pw::link_factory>({other.id, port.id}).get();
+            rtn.insert(rtn.end(), mapping.begin(), mapping.end());
 
-                if (!link.has_value())
-                {
-                    logger::get()->warn("[patchbay] (relink) failed to link: {}", link.error().message);
-                    return;
-                }
-
-                logger::get()->debug("[patchbay] (relink) created {}, which maps {}->{}", link->id(), other.id,
-                                     port.props["audio.channel"]);
-
-                created.emplace(id, std::move(*link));
-            }
+            logger::get()->debug("[patchbay] (map_ports) {} maps to {} mic port(s)", port.id, mapping.size());
         }
+
+        return rtn;
     }
 
     void patchbay::impl::meta_update(std::string_view key, pw::metadata_property prop)
@@ -213,29 +252,115 @@ namespace vencord
         }
 
         speaker.emplace(parsed->name);
+        logger::get()->info(R"([patchbay] (meta_update) speaker name: "{}")", speaker->name);
 
-        relink_all();
+        reload();
+    }
+
+    void patchbay::impl::on_link(std::uint32_t id)
+    {
+        if (!speaker || !options.include.empty())
+        {
+            return;
+        }
+
+        auto &info = links[id];
+
+        if (info.input.node != speaker->id)
+        {
+            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id,
+                                 info.input.node);
+            return;
+        }
+
+        const auto node = info.output.node;
+        auto &output    = nodes[node]; // The node emitting sound
+
+        auto match = [&output](const auto &prop)
+        {
+            return output.info.props[prop.key] == prop.value;
+        };
+
+        if (ranges::any_of(options.exclude, match))
+        {
+            return;
+        }
+
+        core->update();
+
+        link(node);
+    }
+
+    void patchbay::impl::on_node(std::uint32_t id)
+    {
+        auto &[info, ports] = nodes[id];
+
+        if (speaker && info.props["node.name"] == speaker->name)
+        {
+            logger::get()->debug("[patchbay] (on_node) speakers are {}", id);
+            speaker->id = id;
+
+            return;
+        }
+
+        if (options.include.empty())
+        {
+            return;
+        }
+
+        if (ports.empty())
+        {
+            logger::get()->debug("[patchbay] (on_node) {} has no ports", id);
+            return;
+        }
+
+        auto match = [&info](const auto &prop)
+        {
+            return info.props[prop.key] == prop.value;
+        };
+
+        if (ranges::any_of(options.exclude, match))
+        {
+            logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
+            return;
+        }
+
+        if (!ranges::any_of(options.include, match))
+        {
+            logger::get()->debug("[patchbay] (on_node) {} is not included", id);
+            return;
+        }
+
+        created.erase(id);
+        core->update();
+
+        link(id);
     }
 
     template <>
-    void patchbay::impl::add_global<pw::node>(pw::node &node, pw::global &)
+    void patchbay::impl::handle<pw::node>(pw::node &node, pw::global &global)
     {
-        auto id    = node.id();
+        auto id    = global.id;
         auto props = node.info().props;
 
         nodes[id].info = node.info();
 
-        logger::get()->trace(R"([patchbay] (add_global) new node: {} (name: "{}", app: "{}"))", id, props["node.name"],
+        logger::get()->trace(R"([patchbay] (handle) new node: {} (name: "{}", app: "{}"))", id, props["node.name"],
                              props["application.name"]);
 
-        if (options.workaround.empty() || !metadata || !virt_mic)
+        if (!virt_mic)
+        {
+            return;
+        }
+
+        if (!metadata || options.workaround.empty())
         {
             return on_node(id);
         }
 
-        logger::get()->trace("[patchbay] (add_global) workaround is active ({})", glz::write_json(options.workaround));
+        logger::get()->trace("[patchbay] (handle) workaround is active ({})", glz::write_json(options.workaround));
 
-        auto match = [&](const auto &prop)
+        auto match = [&props](const auto &prop)
         {
             return props[prop.key] == prop.value;
         };
@@ -246,14 +371,12 @@ namespace vencord
         }
 
         const auto serial = virt_mic->info().props["object.serial"];
-
-        logger::get()->debug("[patchbay] (add_global) applying workaround to {} (mic = {}, serial = {})", id,
-                             virt_mic->id(), serial);
+        logger::get()->debug("[patchbay] (handle) applying workaround to {} (serial = {})", id, serial);
 
         // https://github.com/Vencord/venmic/issues/13#issuecomment-1884975782
 
         metadata->set_property(id, "target.object", "Spa:Id", serial);
-        metadata->set_property(id, "target.node", "Spa:Id", fmt::format("{}", virt_mic->id()));
+        metadata->set_property(id, "target.node", "Spa:Id", std::to_string(virt_mic->id()));
 
         lettuce_target.emplace(id);
         options.workaround.clear();
@@ -262,83 +385,67 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::add_global<pw::link>(pw::link &link, pw::global &)
+    void patchbay::impl::handle<pw::link>(pw::link &link, pw::global &global)
     {
-        auto id   = link.id();
+        auto id   = global.id;
         auto info = link.info();
 
         links[id] = info;
 
         logger::get()->trace(
-            "[patchbay] (add_global) new link: {} (input-node: {}, output-node: {}, input-port: {}, output-port: {})",
-            link.id(), info.input.node, info.output.node, info.input.port, info.output.port);
+            "[patchbay] (handle) new link: {} (input-node: {}, output-node: {}, input-port: {}, output-port: {})", id,
+            info.input.node, info.output.node, info.input.port, info.output.port);
 
         on_link(id);
     }
 
     template <>
-    void patchbay::impl::add_global<pw::port>(pw::port &port, pw::global &)
+    void patchbay::impl::handle<pw::port>(pw::port &port, pw::global &global)
     {
-        auto props = port.info().props;
+        auto info  = port.info();
+        auto props = info.props;
 
         if (!props.contains("node.id"))
         {
-            logger::get()->warn("[patchbay] (add_global) {} has no parent", port.id());
+            logger::get()->warn("[patchbay] (handle) {} has no parent", global.id);
             return;
         }
 
         auto parent = std::stoull(props["node.id"]);
-        nodes[parent].ports.emplace_back(port.info());
+        nodes[parent].ports.emplace_back(std::move(info));
 
-        logger::get()->trace("[patchbay] (add_global) new port: {} with parent {}", port.id(), parent);
+        logger::get()->trace("[patchbay] (handle) new port: {} with parent {}", global.id, parent);
 
-        /*
-        ? Yes. This belongs here, as the node is created **before** the ports.
-        */
-
+        // Check the parent again
         on_node(parent);
     }
 
     template <>
-    void patchbay::impl::add_global<pw::metadata>(pw::metadata &data, pw::global &global)
+    void patchbay::impl::handle<pw::metadata>(pw::metadata &data, pw::global &global)
     {
         auto props      = data.properties();
         const auto name = global.props["metadata.name"];
 
-        logger::get()->trace(R"([patchbay] (add_global) new metadata: {} (name: "{}"))", data.id(), name);
+        logger::get()->trace(R"([patchbay] (handle) new metadata: {} (name: "{}"))", global.id, name);
 
         if (name != "default")
         {
             return;
         }
 
-        metadata = std::make_unique<pw::metadata>(std::move(data));
-        logger::get()->info("[patchbay] (add_global) found default metadata: {}", metadata->id());
+        metadata      = std::make_unique<pw::metadata>(std::move(data));
+        meta_listener = std::make_unique<pw::metadata_listener>(metadata->listen());
 
-        auto parsed = glz::read_json<pw_metadata_name>(props["default.audio.sink"].value);
+        logger::get()->info("[patchbay] (handle) found default metadata: {}", global.id);
 
-        if (!parsed.has_value())
-        {
-            logger::get()->warn("[patchbay] (add_global) failed to parse speaker");
-            return;
-        }
-
-        listener = std::make_unique<pw::metadata_listener>(metadata->listen());
-        logger::get()->debug("[patchbay] (add_global) speaker name: \"{}\"", parsed->name);
-
-        speaker.emplace(parsed->name);
-
-        listener->on<pw::metadata_event::property>(
-            [this](auto... args)
+        meta_listener->on<pw::metadata_event::property>(
+            [this]<typename... T>(T &&...args)
             {
-                meta_update(args...);
+                meta_update(std::forward<T>(args)...);
                 return 0;
             });
 
-        for (const auto &[id, info] : nodes)
-        {
-            on_node(id);
-        }
+        meta_update("default.audio.sink", props["default.audio.sink"]);
     }
 
     template <typename T>
@@ -353,7 +460,7 @@ namespace vencord
             return;
         }
 
-        add_global(bound.value(), global);
+        handle(bound.value(), global);
     }
 
     void patchbay::impl::add_global(pw::global &global)
@@ -378,87 +485,11 @@ namespace vencord
         }
     }
 
-    void patchbay::impl::rem_global(std::uint32_t id)
+    void patchbay::impl::del_global(std::uint32_t id)
     {
         nodes.erase(id);
+        links.erase(id);
         created.erase(id);
-    }
-
-    void patchbay::impl::on_link(std::uint32_t id)
-    {
-        if (!options.include.empty() || !speaker)
-        {
-            return;
-        }
-
-        auto &info = links[id];
-
-        if (info.input.node != speaker->id)
-        {
-            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id,
-                                 info.input.node);
-            return;
-        }
-
-        // "Output" = the node that is emitting sound
-        auto &output = nodes[info.output.node];
-
-        auto match = [&](const auto &prop)
-        {
-            return output.info.props[prop.key] == prop.value;
-        };
-
-        if (ranges::any_of(options.exclude, match))
-        {
-            return;
-        }
-
-        core->update();
-
-        relink(info.output.node);
-    }
-
-    void patchbay::impl::on_node(std::uint32_t id)
-    {
-        auto &[info, ports] = nodes[id];
-
-        if (speaker && info.props["node.name"] == speaker->name)
-        {
-            logger::get()->debug("[patchbay] (on_node) speakers are {}", id);
-            speaker->id = id;
-        }
-
-        if (options.include.empty())
-        {
-            return;
-        }
-
-        auto match = [&](const auto &prop)
-        {
-            return info.props[prop.key] == prop.value;
-        };
-
-        if (ranges::any_of(options.exclude, match))
-        {
-            logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
-            return;
-        }
-
-        if (!ranges::any_of(options.include, match))
-        {
-            logger::get()->debug("[patchbay] (on_node) {} is not included", id);
-            return;
-        }
-
-        if (ports.empty())
-        {
-            logger::get()->debug("[patchbay] (on_node) {} has no ports", id);
-            return;
-        }
-
-        core->update();
-
-        relink(id);
     }
 
     template <>
@@ -467,7 +498,7 @@ namespace vencord
         static const std::vector<std::string> required{"application.name", "node.name"};
         const auto &props = req.props.empty() ? required : req.props;
 
-        auto desireable = [&](auto &item)
+        auto desireable = [&props](auto &item)
         {
             return ranges::all_of(props, [&](const auto &key) { return !item.second.info.props[key].empty(); });
         };
@@ -475,7 +506,7 @@ namespace vencord
         {
             return item.second.info.output.max > 0;
         };
-        auto to_node = [&](auto &item)
+        auto to_node = [](auto &item)
         {
             return node{item.second.info.props};
         };
@@ -488,12 +519,21 @@ namespace vencord
 
         /*
          * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
-         * we simply re-bind it to fetch the updates only when needed.
+         * we simply rebind it to fetch the updates only when needed.
          */
 
         for (auto &[id, node] : filtered)
         {
-            auto updated    = registry->bind<pw::node>(id).get();
+            auto updated = registry->bind<pw::node>(id).get();
+
+            if (!updated.has_value())
+            {
+                const auto error = updated.error();
+                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, error.message);
+
+                continue;
+            }
+
             node.info.props = updated->info().props;
         }
 
@@ -514,7 +554,7 @@ namespace vencord
 
         options = std::move(req);
 
-        relink_all();
+        reload();
     }
 
     template <>
@@ -548,7 +588,7 @@ namespace vencord
 
         auto listener = registry->listen();
 
-        listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { rem_global(id); });
+        listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { del_global(id); });
         listener.on<pw::registry_event::global>([this](auto global) { add_global(global); });
 
         sender.send(ready{});

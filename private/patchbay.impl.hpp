@@ -22,6 +22,13 @@
 
 namespace vencord
 {
+    /**
+     * Used by @see map_ports:
+     *
+     * @returns port map in form of [mic-port -> target-port]
+     */
+    using port_map = std::vector<std::pair<pw::port_info, pw::port_info>>;
+
     struct node_with_ports
     {
         pw::node_info info;
@@ -46,24 +53,55 @@ namespace vencord
         link_options options;
 
       private:
+        /**
+         * ╔══════════════════╗
+         * ║ Metadata related ║
+         * ╚══════════════════╝
+         *
+         * 1. The *default* metadata is bound to @see metadata
+         * 2. A listener is installed to check for default speaker updates, @see meta_listener
+         * 3. Speaker info is saved to @see speaker, the name is parsed from the metadata, the id is set in @see on_node
+         * 4. The @see lettuce_target is used by the workaround, a redirect is installed in the metadata (see venmic#15)
+         */
+
+        std::unique_ptr<pw::metadata> metadata;
+        std::unique_ptr<pw::metadata_listener> meta_listener;
+
         std::optional<vencord::speaker> speaker;
-        std::unique_ptr<pw::metadata_listener> listener;
+        std::optional<std::uint32_t> lettuce_target;
 
       private:
+        /**
+         * ╔══════════════════╗
+         * ║ Virt mic related ║
+         * ╚══════════════════╝
+         *
+         * 1. The @see virt_mic is created by @see create_mic
+         * 2. All created links, @see relink, are bound in @see created
+         *                                                 └┬─────────┘
+         *                                            key: related node
+         *                                          value: bound link
+         */
+
         std::unique_ptr<pw::node> virt_mic;
-        std::multimap<std::uint32_t, pw::link> created;
+        [[vc::check_erase]] std::multimap<std::uint32_t, pw::link> created;
 
       private:
-        std::map<std::uint32_t, pw::link_info> links;
-        std::map<std::uint32_t, node_with_ports> nodes;
+        /**
+         * ╔═══════════════╗
+         * ║ Logic related ║
+         * ╚═══════════════╝
+         *
+         * 1. All links we encounter are saved in @see links
+         * 2. All nodes we encounter are saved in @see nodes
+         */
+
+        [[vc::check_erase]] std::map<std::uint32_t, pw::link_info> links;
+        [[vc::check_erase]] std::map<std::uint32_t, node_with_ports> nodes;
 
       private:
         std::shared_ptr<pw::core> core;
         std::shared_ptr<pw::registry> registry;
-
-      private:
-        std::unique_ptr<pw::metadata> metadata;
-        std::optional<std::uint32_t> lettuce_target; // https://github.com/Vencord/venmic/issues/15
 
       private:
         std::atomic_bool should_exit{false};
@@ -79,28 +117,30 @@ namespace vencord
         void cleanup(bool);
 
       private:
-        void relink_all();
-        void relink(std::uint32_t);
+        void reload();
+
+      private:
+        void link(std::uint32_t);
+        port_map map_ports(node_with_ports &);
 
       private:
         void meta_update(std::string_view, pw::metadata_property);
+
+      private:
+        void on_link(std::uint32_t);
+        void on_node(std::uint32_t);
 
       private:
         template <typename T>
         void bind(pw::global &);
 
       public:
-        void add_global(pw::global &);
-
         template <typename T>
-        void add_global(T &, pw::global &);
+        void handle(T &, pw::global &);
 
       private:
-        void rem_global(std::uint32_t);
-
-      private:
-        void on_link(std::uint32_t);
-        void on_node(std::uint32_t);
+        void add_global(pw::global &);
+        void del_global(std::uint32_t);
 
       private:
         template <typename T>

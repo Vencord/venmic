@@ -51,6 +51,12 @@ if (PROJECT_IS_TOP_LEVEL)
   target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
 endif()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=vc::)
+else()
+  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-unknown-attributes)
+endif()
+
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-missing-field-initializers -Wno-cast-function-type)
 
 # --------------------------------------------------------------------------------------------------------
@@ -81,7 +87,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        4.1
+  VERSION        5.0
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
