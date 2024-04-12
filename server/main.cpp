@@ -76,6 +76,15 @@ int main(int argc, char **args)
                     response.status = 200;
                 });
 
+    server.Get("/has-pipewire-pulse",
+               [](const auto &, auto &response)
+               {
+                   auto data = glz::write_json(patchbay::has_pipewire());
+
+                   response.set_content(data, "application/json");
+                   response.status = 200;
+               });
+
     server.Get("/unlink",
                [](const auto &, auto &response)
                {
