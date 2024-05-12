@@ -111,13 +111,13 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        2.4.5
+  VERSION        2.6.1
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
 CPMFindPackage(
   NAME           spdlog
-  VERSION        1.13.0
+  VERSION        1.14.1
   GIT_REPOSITORY "https://github.com/gabime/spdlog"
 )
 
