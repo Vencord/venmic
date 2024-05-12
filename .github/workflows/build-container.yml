@@ -11,17 +11,18 @@ jobs:
   build-container:
     strategy:
       matrix:
-        include:
-          - runner: "macos-14"
-            arch: "arm64"
-          - runner: "ubuntu-latest"
-            arch: "amd64"
+        arch: ["arm64", "amd64"]
 
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
+
+      - name: 🤖 Setup Qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "arm64"
 
       - name: 🐋 Setup Buildx
         uses: docker/setup-buildx-action@v3
