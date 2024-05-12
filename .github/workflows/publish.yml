@@ -43,16 +43,11 @@ jobs:
           path: build/Release
 
   build-arm64:
-    runs-on: ubuntu-latest
+    runs-on: macos-14
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🤖 Setup Qemu
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: "arm64"
 
       - name: 🦥 Cache Dependencies
         uses: actions/cache@v4
