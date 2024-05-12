@@ -10,4 +10,7 @@ RUN dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-p
 # PNPM
 
 RUN curl -fsSL https://get.pnpm.io/install.sh | sh -
-RUN source /root/.bashrc
+
+# Add build script
+
+ADD build.sh .
