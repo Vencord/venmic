@@ -51,6 +51,8 @@ namespace vencord
 
     void patchbay::impl::create_mic()
     {
+        logger::get()->trace("[patchbay] (create_mic) creating virt-mic");
+
         auto node = core->create<pw::node>(pw::null_sink_factory{
                                                .name      = "vencord-screen-share",
                                                .positions = {"FL", "FR"},
@@ -523,11 +525,16 @@ namespace vencord
             return node{item.second.info.props};
         };
 
+        logger::get()->trace("[patchbay] (receive): listing nodes ({{{}}})", fmt::join(req.props, ","));
+
         core->update();
 
         auto filtered = nodes                               //
                         | ranges::views::filter(desireable) //
-                        | ranges::views::filter(can_output);
+                        | ranges::views::filter(can_output) //
+                        | ranges::to<std::vector>;
+
+        logger::get()->trace("[patchbay] (receive): found {} nodes", filtered.size());
 
         /*
          * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
@@ -536,6 +543,7 @@ namespace vencord
 
         for (auto &[id, node] : filtered)
         {
+            logger::get()->trace("[patchbay] (receive): rebinding {}", id);
             auto updated = registry->bind<pw::node>(id).get();
 
             if (!updated.has_value())
@@ -596,7 +604,12 @@ namespace vencord
             return;
         }
 
-        receiver.attach(loop, [this, &sender]<typename T>(T message) { receive(sender, message); });
+        receiver.attach(loop,
+                        [this, &sender]<typename T>(T message)
+                        {
+                            logger::get()->trace("[patchbay] (main_loop) received message: {}", glz::type_name<T>);
+                            receive(sender, message);
+                        });
 
         auto listener = registry->listen();
 
