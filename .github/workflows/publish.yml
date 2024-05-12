@@ -14,71 +14,40 @@ on:
 name: 🚀 Publish Package
 
 jobs:
-  build-x86_64:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - runner: "macos-14"
+            arch: "arm64"
+          - runner: "ubuntu-latest"
+            arch: "amd64"
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🏗️ Build Addon
-        uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185
+      - name: 🔐 Login
+        uses: docker/login-action@v3
         with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          options: -v ${{ github.workspace }}:/work --platform linux/amd64
-          image: ghcr.io/vencord/venmic-builder-x86_64:latest
-          registry: gcr.io
-          shell: bash
-          run: |
-            source /root/.bashrc
 
-            cd /work
-            pnpm install --ignore-scripts && pnpm run install
+      - name: 🏗️ Build Addon
+        run: |
+          docker run -it -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest /build.sh
 
       - name: ♻️ Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: addon-x86_64
-          path: build/Release
-
-  build-arm64:
-    runs-on: macos-14
-
-    steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 🦥 Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          enableCrossOsArchive: true
-          key: venmic-arm
-          path: build
-
-      - name: 🏗️ Build Addon
-        uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          options: -v ${{ github.workspace }}:/work --platform linux/arm64
-          image: ghcr.io/vencord/venmic-builder-arm64:latest
-          registry: gcr.io
-          shell: bash
-          run: |
-            source /root/.bashrc
-
-            cd /work
-            pnpm install --ignore-scripts && pnpm run install
-
-      - name: ♻️ Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: addon-arm64
+          name: addon-${{ matrix.arch }}
           path: build/Release
 
   publish:
-    needs: [build-arm64, build-x86_64]
+    needs: [build]
     runs-on: ubuntu-latest
     container: fedora:38
 
@@ -111,13 +80,13 @@ jobs:
       - name: 🏗️ Setup Dependencies
         run: pnpm install --ignore-scripts
 
-      - name: 📦 Download Build (x86_64)
+      - name: 📦 Download Build (amd64)
         uses: actions/download-artifact@v4
         with:
-          name: addon-x86_64
+          name: addon-amd64
           path: build/Release
 
-      - name: 🛠️ Prepare Prebuilds (x86_64)
+      - name: 🛠️ Prepare Prebuilds (amd64)
         run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=x64
 
       - name: 📦 Download Build (arm64)

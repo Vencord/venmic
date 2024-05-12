@@ -10,7 +10,6 @@ name: 🐳 Build & Publish Docker Image
 jobs:
   build-container:
     strategy:
-      fail-fast: false
       matrix:
         include:
           - runner: "macos-14"

@@ -26,5 +26,5 @@ jobs:
       - name: 🚀 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: server-x86-64
+          name: server-amd64
           path: build/server
