@@ -32,7 +32,7 @@ jobs:
 
       - name: 🏗️ Build Addon
         run: |
-          docker run -it -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest /build.sh
+          docker run -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest /build.sh
 
       - name: ♻️ Upload Artifact
         uses: actions/upload-artifact@v4
