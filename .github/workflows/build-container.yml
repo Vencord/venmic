@@ -9,16 +9,20 @@ name: 🐳 Build & Publish Docker Image
 
 jobs:
   build-container:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: "macos-14"
+            arch: "arm64"
+          - runner: "ubuntu-latest"
+            arch: "amd64"
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🤖 Setup Qemu
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: "arm64"
 
       - name: 🐋 Setup Buildx
         uses: docker/setup-buildx-action@v3
@@ -27,21 +31,17 @@ jobs:
         id: cache-image
         uses: actions/cache@v4
         with:
-          key: venmic-builder-cache
+          key: venmic-builder-cache-${{ matrix.arch }}
           path: |
-            docker/venmic-builder-x86_64.tar
-            docker/venmic-builder-arm64.tar
+            docker/venmic-builder-${{ matrix.arch }}.tar
 
       - name: 🏗️ Build Image
         if: steps.cache-image.outputs.cache-hit != 'true' && ${{ github.event.inputs.skip-cache != 'true' }}
         run: |
           cd docker
 
-          docker buildx build --platform=linux/amd64 --tag venmic-builder-x86_64 --load .
-          docker save venmic-builder-x86_64 > venmic-builder-x86_64.tar
-
-          docker buildx build --platform=linux/arm64 --tag venmic-builder-arm64 --load .
-          docker save venmic-builder-arm64 > venmic-builder-arm64.tar
+          docker buildx build --platform=linux/${{ matrix.arch }} --tag venmic-builder-${{ matrix.arch }} --load .
+          docker save venmic-builder-${{ matrix.arch }} > venmic-builder-${{ matrix.arch }}.tar
 
       - name: 🔐 Login
         uses: docker/login-action@v3
@@ -52,11 +52,7 @@ jobs:
 
       - name: ♻️ Publish Images
         run: |
-          docker load < docker/venmic-builder-x86_64.tar
-          docker load < docker/venmic-builder-arm64.tar
+          docker load < docker/venmic-builder-${{ matrix.arch }}.tar
+          docker image tag venmic-builder-${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}
 
-          docker image tag venmic-builder-arm64 ghcr.io/vencord/venmic-builder-arm64
-          docker image tag venmic-builder-x86_64 ghcr.io/vencord/venmic-builder-x86_64
-
-          docker push ghcr.io/vencord/venmic-builder-x86_64:latest
-          docker push ghcr.io/vencord/venmic-builder-arm64:latest
+          docker push ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest
