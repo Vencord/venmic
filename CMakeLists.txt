@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 3.4.2)
+project(venmic LANGUAGES CXX VERSION 3.4.3)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
