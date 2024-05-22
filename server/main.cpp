@@ -1,4 +1,6 @@
 #include <httplib.h>
+
+#include <exception>
 #include <glaze/glaze.hpp>
 
 #include <vencord/logger.hpp>
@@ -48,6 +50,25 @@ int main(int argc, char **args)
     logger::get()->info("Running on port: {}", port);
 
     httplib::Server server;
+
+    server.set_exception_handler(
+        [&](const auto &, auto &, auto exception)
+        {
+            try
+            {
+                std::rethrow_exception(exception);
+            }
+            catch (const std::exception &ex)
+            {
+                logger::get()->error("Encountered error: {}", ex.what());
+            }
+            catch (...)
+            {
+                logger::get()->error("Encountered error: <Unknown>");
+            }
+
+            server.stop();
+        });
 
     server.Post("/list",
                 [](const auto &req, auto &response)

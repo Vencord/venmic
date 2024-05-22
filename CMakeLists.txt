@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 3.4.4)
+project(venmic LANGUAGES CXX VERSION 3.5.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -87,7 +87,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        5.1
+  VERSION        6.0
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
@@ -111,7 +111,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        2.6.1
+  VERSION        2.6.5
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 

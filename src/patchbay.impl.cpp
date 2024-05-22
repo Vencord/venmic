@@ -40,7 +40,15 @@ namespace vencord
 
         thread = std::jthread{thread_start, std::move(pw_receiver), cr_sender};
 
-        if (receiver->recv_as<ready>().success)
+        auto response = receiver->recv_timeout_as<ready>(std::chrono::seconds(1));
+
+        if (!response.has_value())
+        {
+            sender->send(abort{});
+            response = receiver->recv_as<ready>();
+        }
+
+        if (response->success)
         {
             logger::get()->trace("[patchbay] (init) pw_receiver is ready");
             return;
@@ -589,6 +597,15 @@ namespace vencord
         core->context()->loop()->quit();
     }
 
+    template <>
+    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] abort &)
+    {
+        should_exit = true;
+
+        update_source.request_stop();
+        core->context()->loop()->quit();
+    }
+
     void patchbay::impl::start(pw_recipe::receiver receiver, cr_recipe::sender sender)
     {
         auto loop    = pw::main_loop::create();
@@ -611,16 +628,29 @@ namespace vencord
                             receive(sender, message);
                         });
 
+        auto future   = core->update();
+        update_source = future.stop_source();
+
+        auto success = future.get();
+
+        if (!success.value_or(false))
+        {
+            sender.send(ready{false});
+            return;
+        }
+
         auto listener = registry->listen();
 
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { del_global(id); });
         listener.on<pw::registry_event::global>([this](auto global) { add_global(global); });
 
-        sender.send(ready{});
+        sender.send(ready{true});
 
         while (!should_exit)
         {
             loop->run();
         }
+
+        logger::get()->trace("[patchbay] (main_loop) finished");
     }
 } // namespace vencord

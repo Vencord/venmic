@@ -46,6 +46,7 @@ namespace vencord
         std::jthread thread;
 
       public:
+        std::stop_source update_source;
         std::unique_ptr<pw_recipe::sender> sender;
         std::unique_ptr<cr_recipe::receiver> receiver;
 

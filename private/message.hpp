@@ -24,11 +24,15 @@ namespace vencord
     {
     };
 
+    struct abort
+    {
+    };
+
     struct ready
     {
         bool success{true};
     };
 
-    using pw_recipe = pw::recipe<list_nodes, link_options, unset_target, quit>;
+    using pw_recipe = pw::recipe<list_nodes, link_options, unset_target, quit, abort>;
     using cr_recipe = cr::recipe<std::vector<node>, ready>;
 } // namespace vencord
