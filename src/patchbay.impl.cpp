@@ -636,23 +636,16 @@ namespace vencord
                             receive(sender, message);
                         });
 
-        auto future   = core->update();
-        update_source = future.stop_source();
-
-        auto success = future.get();
-
-        if (!success.value_or(false))
-        {
-            sender.send(ready{false});
-            return;
-        }
-
         auto listener = registry->listen();
 
         listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { del_global(id); });
         listener.on<pw::registry_event::global>([this](auto global) { add_global(global); });
 
-        sender.send(ready{true});
+        auto future   = core->update();
+        update_source = future.stop_source();
+
+        auto success = future.get();
+        sender.send(ready{success.value_or(false)});
 
         while (!should_exit)
         {
