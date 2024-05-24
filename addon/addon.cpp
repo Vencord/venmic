@@ -99,7 +99,7 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
 
         std::vector<std::string> props{};
 
-        if (info.Length() == 1)
+        if (info.Length() == 1 && !info[0].IsUndefined())
         {
             auto array = to_array<std::string>(info[0]);
 
