@@ -2,6 +2,7 @@
 
 #include "logger.hpp"
 
+#include <charconv>
 #include <stdexcept>
 
 #include <range/v3/view.hpp>
@@ -44,6 +45,8 @@ namespace vencord
 
         if (!response.has_value())
         {
+            logger::get()->error("[patchbay] (init) pw_receiver failed to respond within 1 second, aborting");
+
             sender->send(abort{});
             response = receiver->recv_as<ready>();
         }
@@ -437,9 +440,18 @@ namespace vencord
             return;
         }
 
-        auto parent = std::stoull(props["node.id"]);
-        nodes[parent].ports.emplace_back(std::move(info));
+        std::uint32_t parent{};
 
+        auto node_id = info.props["node.id"];
+        auto status  = std::from_chars(node_id.data(), node_id.data() + node_id.size(), parent);
+
+        if (status.ec != std::errc{})
+        {
+            logger::get()->warn("[patchbay] (handle) {} failed to parse parent node: '{}'", global.id, node_id);
+            return;
+        }
+
+        nodes[parent].ports.emplace_back(std::move(info));
         logger::get()->trace("[patchbay] (handle) new port: {} with parent {}", global.id, parent);
 
         // Check the parent again
