@@ -2,6 +2,7 @@
 
 #include "logger.hpp"
 
+#include <iterator>
 #include <charconv>
 #include <stdexcept>
 
@@ -136,8 +137,8 @@ namespace vencord
             return;
         }
 
-        auto &target = nodes[id];
-        auto &props  = target.info.props;
+        const auto &target = nodes[id];
+        auto props         = target.info.props;
 
         if (options.ignore_devices && !props["device.id"].empty())
         {
@@ -191,7 +192,7 @@ namespace vencord
         logger::get()->debug("[patchbay] (link) linked all ports of {}", id);
     }
 
-    port_map patchbay::impl::map_ports(node_with_ports &target)
+    port_map patchbay::impl::map_ports(const node_with_ports &target)
     {
         port_map rtn;
 
@@ -204,11 +205,11 @@ namespace vencord
             return item.direction == pw::port_direction::input;
         };
 
-        auto &mic       = nodes[virt_mic->id()];
+        const auto mic  = nodes[virt_mic->id()];
         auto mic_inputs = mic.ports | ranges::views::filter(is_input);
 
-        const auto id       = target.info.id;
-        auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
+        const auto id             = target.info.id;
+        const auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
 
         if (target_outputs.empty())
         {
@@ -223,21 +224,25 @@ namespace vencord
             logger::get()->debug("[patchbay] (map_ports) {} is mono", id);
         }
 
-        for (auto &port : target_outputs)
+        for (const auto &port : target_outputs)
         {
-            auto matching_channel = [is_mono, &port](auto &item)
+            auto port_props = port.props;
+
+            auto matching_channel = [is_mono, &port_props](auto &item)
             {
                 if (is_mono)
                 {
                     return true;
                 }
 
-                if (item.props["audio.channel"] == "UNK" || port.props["audio.channel"] == "UNK")
+                auto props = item.props;
+
+                if (props["audio.channel"] == "UNK" || port_props["audio.channel"] == "UNK")
                 {
-                    return item.props["port.id"] == port.props["port.id"];
+                    return props["port.id"] == port_props["port.id"];
                 }
 
-                return item.props["audio.channel"] == port.props["audio.channel"];
+                return props["audio.channel"] == port_props["audio.channel"];
             };
 
             auto mapping =
@@ -246,7 +251,7 @@ namespace vencord
                 | ranges::views::transform([port](const auto &mic_port) { return std::make_pair(mic_port, port); }) //
                 | ranges::to<std::vector>;
 
-            rtn.insert(rtn.end(), mapping.begin(), mapping.end());
+            ranges::move(mapping, std::back_inserter(rtn));
 
             logger::get()->debug("[patchbay] (map_ports) {} maps to {} mic port(s)", port.id, mapping.size());
         }
@@ -285,7 +290,7 @@ namespace vencord
             return;
         }
 
-        auto &info = links[id];
+        const auto &info = links[id];
 
         const auto output_id = info.output.node;
         const auto input_id  = info.input.node;
@@ -296,18 +301,18 @@ namespace vencord
             return;
         }
 
-        auto &output = nodes[output_id]; // The node emitting sound
-        auto &input  = nodes[input_id];  // The node receiving sound
+        auto output_props = nodes[output_id].info.props; // The node emitting sound
+        auto input_props  = nodes[input_id].info.props;  // The node receiving sound
 
-        if (!options.only_default_speakers && input.info.props["device.id"].empty())
+        if (!options.only_default_speakers && input_props["device.id"].empty())
         {
             logger::get()->trace("[patchbay] (on_link) {} is not playing to a device: {}", id, input_id);
             return;
         }
 
-        auto match = [&output](const auto &prop)
+        auto match = [&output_props](const auto &prop)
         {
-            return output.info.props[prop.key] == prop.value;
+            return output_props[prop.key] == prop.value;
         };
 
         if (ranges::any_of(options.exclude, match))
@@ -322,9 +327,10 @@ namespace vencord
 
     void patchbay::impl::on_node(std::uint32_t id)
     {
-        auto &[info, ports] = nodes[id];
+        const auto &[info, ports] = nodes[id];
+        auto props                = info.props;
 
-        if (speaker && info.props["node.name"] == speaker->name)
+        if (speaker && props["node.name"] == speaker->name)
         {
             logger::get()->debug("[patchbay] (on_node) speakers are {}", id);
             speaker->id = id;
@@ -343,9 +349,9 @@ namespace vencord
             return;
         }
 
-        auto match = [&info](const auto &prop)
+        auto match = [&props](const auto &prop)
         {
-            return info.props[prop.key] == prop.value;
+            return props[prop.key] == prop.value;
         };
 
         if (ranges::any_of(options.exclude, match))
@@ -367,12 +373,14 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::handle<pw::node>(pw::node &node, pw::global &global)
+    void patchbay::impl::handle<pw::node>(pw::node &node, const pw::global &global)
     {
-        auto id    = global.id;
-        auto props = node.info().props;
+        const auto id = global.id;
 
-        nodes[id].info = node.info();
+        auto info  = node.info();
+        auto props = info.props;
+
+        nodes[id].info = std::move(info);
 
         logger::get()->trace(R"([patchbay] (handle) new node: {} (name: "{}", app: "{}"))", id, props["node.name"],
                              props["application.name"]);
@@ -414,22 +422,22 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::handle<pw::link>(pw::link &link, pw::global &global)
+    void patchbay::impl::handle<pw::link>(pw::link &link, const pw::global &global)
     {
-        auto id   = global.id;
-        auto info = link.info();
-
-        links[id] = info;
+        const auto id = global.id;
+        auto info     = link.info();
 
         logger::get()->trace(
             "[patchbay] (handle) new link: {} (input-node: {}, output-node: {}, input-port: {}, output-port: {})", id,
             info.input.node, info.output.node, info.input.port, info.output.port);
 
+        links[id] = std::move(info);
+
         on_link(id);
     }
 
     template <>
-    void patchbay::impl::handle<pw::port>(pw::port &port, pw::global &global)
+    void patchbay::impl::handle<pw::port>(pw::port &port, const pw::global &global)
     {
         auto info  = port.info();
         auto props = info.props;
@@ -459,10 +467,11 @@ namespace vencord
     }
 
     template <>
-    void patchbay::impl::handle<pw::metadata>(pw::metadata &data, pw::global &global)
+    void patchbay::impl::handle<pw::metadata>(pw::metadata &data, const pw::global &global)
     {
-        auto props      = data.properties();
-        const auto name = global.props["metadata.name"];
+        auto props      = global.props;
+        auto properties = data.properties();
+        const auto name = props["metadata.name"];
 
         logger::get()->trace(R"([patchbay] (handle) new metadata: {} (name: "{}"))", global.id, name);
 
@@ -487,11 +496,11 @@ namespace vencord
                 return 0;
             });
 
-        meta_update("default.audio.sink", props["default.audio.sink"]);
+        meta_update("default.audio.sink", properties["default.audio.sink"]);
     }
 
     template <typename T>
-    void patchbay::impl::bind(pw::global &global)
+    void patchbay::impl::bind(const pw::global &global)
     {
         auto bound = registry->bind<T>(global.id).get();
 
@@ -505,7 +514,14 @@ namespace vencord
         handle(bound.value(), global);
     }
 
-    void patchbay::impl::add_global(pw::global &global)
+    void patchbay::impl::del_global(std::uint32_t id)
+    {
+        nodes.erase(id);
+        links.erase(id);
+        created.erase(id);
+    }
+
+    void patchbay::impl::add_global(const pw::global &global)
     {
         logger::get()->trace(R"([patchbay] (add_global) new global: {} (type: "{}"))", global.id, global.type);
 
@@ -527,30 +543,45 @@ namespace vencord
         }
     }
 
-    void patchbay::impl::del_global(std::uint32_t id)
-    {
-        nodes.erase(id);
-        links.erase(id);
-        created.erase(id);
-    }
-
     template <>
     void patchbay::impl::receive(cr_recipe::sender &sender, list_nodes &req)
     {
         static const std::vector<std::string> required{"application.name", "node.name"};
         const auto &props = req.props.empty() ? required : req.props;
 
-        auto desireable = [&props](auto &item)
+        auto desireable = [&props](const auto &item)
         {
-            return ranges::all_of(props, [&](const auto &key) { return !item.second.info.props[key].empty(); });
+            auto item_props = item.second.info.props;
+            return ranges::all_of(props, [&](const auto &key) { return !item_props[key].empty(); });
         };
         auto can_output = [](const auto &item)
         {
             return item.second.info.output.max > 0;
         };
-        auto to_node = [](auto &item)
+        auto to_updated_node = [this](const auto &item)
         {
-            return node{item.second.info.props};
+            /*
+             * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
+             * we simply rebind it to fetch the updates only when needed.
+             */
+
+            const auto &[id, data] = item;
+            auto props             = data.info.props;
+
+            logger::get()->trace("[patchbay] (receive): rebinding {}", id);
+            auto updated = registry->bind<pw::node>(id).get();
+
+            if (updated.has_value())
+            {
+                props = updated->info().props;
+            }
+            else
+            {
+                const auto error = updated.error();
+                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, error.message);
+            }
+
+            return node{props};
         };
 
         logger::get()->trace("[patchbay] (receive): listing nodes ({{{}}})", fmt::join(req.props, ","));
@@ -564,29 +595,8 @@ namespace vencord
 
         logger::get()->trace("[patchbay] (receive): found {} nodes", filtered.size());
 
-        /*
-         * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
-         * we simply rebind it to fetch the updates only when needed.
-         */
-
-        for (auto &[id, node] : filtered)
-        {
-            logger::get()->trace("[patchbay] (receive): rebinding {}", id);
-            auto updated = registry->bind<pw::node>(id).get();
-
-            if (!updated.has_value())
-            {
-                const auto error = updated.error();
-                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, error.message);
-
-                continue;
-            }
-
-            node.info.props = updated->info().props;
-        }
-
-        auto rtn = filtered                            //
-                   | ranges::views::transform(to_node) //
+        auto rtn = filtered                                    //
+                   | ranges::views::transform(to_updated_node) //
                    | ranges::to<std::vector>;
 
         sender.send(rtn);

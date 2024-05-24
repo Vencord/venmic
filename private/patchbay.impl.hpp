@@ -22,11 +22,6 @@
 
 namespace vencord
 {
-    /**
-     * Used by @see map_ports:
-     *
-     * @returns port map in form of [mic-port -> target-port]
-     */
     using port_map = std::vector<std::pair<pw::port_info, pw::port_info>>;
 
     struct node_with_ports
@@ -122,7 +117,7 @@ namespace vencord
 
       private:
         void link(std::uint32_t);
-        port_map map_ports(node_with_ports &);
+        port_map map_ports(const node_with_ports &);
 
       private:
         void meta_update(std::string_view, pw::metadata_property);
@@ -133,15 +128,15 @@ namespace vencord
 
       private:
         template <typename T>
-        void bind(pw::global &);
+        void bind(const pw::global &);
 
       public:
         template <typename T>
-        void handle(T &, pw::global &);
+        void handle(T &, const pw::global &);
 
       private:
-        void add_global(pw::global &);
         void del_global(std::uint32_t);
+        void add_global(const pw::global &);
 
       private:
         template <typename T>
