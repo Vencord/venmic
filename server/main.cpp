@@ -20,6 +20,7 @@ struct glz::meta<vencord::link_options>
     static constexpr auto value = object("exclude", &T::exclude,                             //
                                          "include", &T::include,                             //
                                          "ignore_devices", &T::ignore_devices,               //
+                                         "ignore_input_media", &T::ignore_input_media,       //
                                          "only_default_speakers", &T::only_default_speakers, //
                                          "workaround", &T::workaround);
 };

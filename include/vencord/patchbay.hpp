@@ -18,7 +18,11 @@ namespace vencord
         std::vector<prop> include;
         std::vector<prop> exclude;
 
-        bool ignore_devices{true};
+      public:
+        bool ignore_devices{true};     // Only link against non-device nodes
+        bool ignore_input_media{true}; // Ignore Nodes that have "Input" in their media class
+
+      public:
         bool only_default_speakers{true};
 
       public:

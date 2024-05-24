@@ -134,10 +134,18 @@ namespace vencord
         }
 
         auto &target = nodes[id];
+        auto &props  = target.info.props;
 
-        if (options.ignore_devices && !target.info.props["device.id"].empty())
+        if (options.ignore_devices && !props["device.id"].empty())
         {
             logger::get()->warn("[patchbay] (link) prevented link to device: {}", id);
+            return;
+        }
+
+        if (options.ignore_input_media && props["media.class"].find("Input") != std::string::npos)
+        {
+            logger::get()->warn("[patchbay] (link) prevented link to node with input class: {} (\"{}\")", id,
+                                props["media.class"]);
             return;
         }
 
