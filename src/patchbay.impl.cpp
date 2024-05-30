@@ -36,10 +36,10 @@ namespace vencord
 
     patchbay::impl::~impl()
     {
-        cleanup(true);
-
         should_exit = true;
+
         sender->send(quit{});
+        receiver->recv_as<quit>();
     }
 
     patchbay::impl::impl()
@@ -673,6 +673,11 @@ namespace vencord
         {
             loop->run();
         }
+
+        cleanup(true);
+
+        core->update();
+        sender.send(quit{});
 
         logger::get()->trace("[patchbay] (main_loop) finished");
     }
