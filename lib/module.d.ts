@@ -10,7 +10,7 @@ type Optional<
     Key extends keyof Type
 > = Partial<Pick<Type, Key>> & Omit<Type, Key>;
 
-export type Node<T extends string = ""> = Record<LiteralUnion<T, string>, string>;
+export type Node<T extends string = never> = Record<LiteralUnion<T, string>, string>;
 
 export interface LinkData
 {
