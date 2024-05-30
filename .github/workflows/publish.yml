@@ -4,6 +4,12 @@ on:
       test:
         type: boolean
         description: Skip publishing step
+      fix:
+        type: boolean
+        description: Skip build step
+      reuse:
+        type: string
+        description: Workflow to reuse artifacts from
       no-tag-check:
         type: boolean
         description: Skip tag checking step
@@ -31,10 +37,19 @@ jobs:
           platforms: "arm64"
 
       - name: 🏗️ Build Addon
+        if: ${{ github.event.inputs.fix != 'true' }}
         run: |
           docker run -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest /build.sh
 
-      - name: ♻️ Upload Artifact
+      - name: ♻️ Reuse Artifact
+        if: ${{ github.event.inputs.fix == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: addon-${{ matrix.arch }}
+          path: build/Release
+          run-id: ${{ github.event.inputs.reuse }}
+
+      - name: 📤 Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: addon-${{ matrix.arch }}
@@ -50,7 +65,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🛑 Check Tag
-        if: "${{ github.event.inputs.no-tag-check != 'true' }}"
+        if: ${{ github.event.inputs.no-tag-check != 'true' }}
         run: |
           dnf install -y jq
           pkg_version="v$(jq -r .version < package.json)"
@@ -93,7 +108,7 @@ jobs:
         run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=arm64
 
       - name: 🛒 Publish
-        if: "${{ github.event.inputs.test != 'true' }}"
+        if: ${{ github.event.inputs.test != 'true' }}
         run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
