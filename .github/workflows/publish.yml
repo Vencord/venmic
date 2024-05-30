@@ -47,6 +47,7 @@ jobs:
         with:
           name: addon-${{ matrix.arch }}
           path: build/Release
+          github-token: ${{ secrets.ACTIONS_TOKEN }}
           run-id: ${{ github.event.inputs.reuse }}
 
       - name: 📤 Upload Artifact
