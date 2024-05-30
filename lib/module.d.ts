@@ -10,30 +10,25 @@ type Optional<
     Key extends keyof Type
 > = Partial<Pick<Type, Key>> & Omit<Type, Key>;
 
-export interface Prop
-{
-    key: string;
-    value: string;
-}
+export type Node<T extends string = ""> = Record<LiteralUnion<T, string>, string>;
 
 export interface LinkData
 {
-    include: Prop[];
-    exclude: Prop[];
+    include: Node[];
+    exclude: Node[];
 
     ignore_devices?: boolean;
     ignore_input_media?: boolean;
     only_default_speakers?: boolean;
     
-    workaround?: Prop[];
+    workaround?: Node[];
 }
-
 
 export class PatchBay
 {
     unlink(): void;
     
-    list<T extends string = DefaultProps>(props?: T[]): Record<LiteralUnion<T, string>, string>[];
+    list<T extends string = DefaultProps>(props?: T[]): Node<T>[];
     link(data: Optional<LinkData, "exclude"> | Optional<LinkData, "include">): boolean;
 
     static hasPipeWire(): boolean;

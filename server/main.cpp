@@ -6,25 +6,6 @@
 #include <vencord/logger.hpp>
 #include <vencord/patchbay.hpp>
 
-template <>
-struct glz::meta<vencord::prop>
-{
-    using T                     = vencord::prop;
-    static constexpr auto value = object("key", &T::key, "value", &T::value);
-};
-
-template <>
-struct glz::meta<vencord::link_options>
-{
-    using T                     = vencord::link_options;
-    static constexpr auto value = object("exclude", &T::exclude,                             //
-                                         "include", &T::include,                             //
-                                         "ignore_devices", &T::ignore_devices,               //
-                                         "ignore_input_media", &T::ignore_input_media,       //
-                                         "only_default_speakers", &T::only_default_speakers, //
-                                         "workaround", &T::workaround);
-};
-
 int main(int argc, char **args)
 {
     using vencord::logger;

@@ -7,16 +7,12 @@
 
 namespace vencord
 {
-    struct prop
-    {
-        std::string key;
-        std::string value;
-    };
+    using node = std::map<std::string, std::string>;
 
     struct link_options
     {
-        std::vector<prop> include;
-        std::vector<prop> exclude;
+        std::vector<node> include;
+        std::vector<node> exclude;
 
       public:
         bool ignore_devices{true};     // Only link against non-device nodes
@@ -26,10 +22,8 @@ namespace vencord
         bool only_default_speakers{true};
 
       public:
-        std::vector<prop> workaround;
+        std::vector<node> workaround;
     };
-
-    using node = std::map<std::string, std::string>;
 
     class patchbay
     {

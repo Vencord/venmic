@@ -3,9 +3,10 @@
 #include "patchbay.hpp"
 #include "message.hpp"
 
-#include <map>
 #include <thread>
 #include <atomic>
+
+#include <map>
 #include <string_view>
 
 #include <rohrkabel/global.hpp>
@@ -109,6 +110,9 @@ namespace vencord
         impl();
 
       private:
+        [[nodiscard]] port_map map_ports(const node_with_ports &);
+
+      private:
         void create_mic();
         void cleanup(bool);
 
@@ -117,7 +121,6 @@ namespace vencord
 
       private:
         void link(std::uint32_t);
-        port_map map_ports(const node_with_ports &);
 
       private:
         void meta_update(std::string_view, pw::metadata_property);

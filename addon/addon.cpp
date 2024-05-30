@@ -33,21 +33,30 @@ std::optional<bool> convert(Napi::Value value)
 }
 
 template <>
-std::optional<vencord::prop> convert(Napi::Value value)
+std::optional<vencord::node> convert(Napi::Value value)
 {
     if (!value.IsObject())
     {
         return std::nullopt;
     }
 
-    auto object = value.ToObject();
+    auto object = value.As<Napi::Object>();
+    auto rtn    = vencord::node{};
 
-    if (!object.Has("key") || !object.Has("value"))
+    for (const auto &[obj_key, obj_value] : object)
     {
-        return std::nullopt;
+        auto key   = convert<std::string>(obj_key);
+        auto value = convert<std::string>(obj_value);
+
+        if (!key || !value)
+        {
+            return std::nullopt;
+        }
+
+        rtn.emplace(key.value(), value.value());
     }
 
-    return vencord::prop{.key = object.Get("key").ToString(), .value = object.Get("value").ToString()};
+    return rtn;
 }
 
 template <typename T>
@@ -159,12 +168,12 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
             return Napi::Boolean::New(env, false);
         }
 
-        auto include               = to_array<vencord::prop>(data.Get("include"));
-        auto exclude               = to_array<vencord::prop>(data.Get("exclude"));
+        auto include               = to_array<vencord::node>(data.Get("include"));
+        auto exclude               = to_array<vencord::node>(data.Get("exclude"));
         auto ignore_devices        = convert<bool>(data.Get("ignore_devices"));
         auto ignore_input_media    = convert<bool>(data.Get("ignore_input_media"));
         auto only_default_speakers = convert<bool>(data.Get("only_default_speakers"));
-        auto workaround            = to_array<vencord::prop>(data.Get("workaround"));
+        auto workaround            = to_array<vencord::node>(data.Get("workaround"));
 
         if (!include && !exclude)
         {
@@ -176,12 +185,12 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         }
 
         vencord::patchbay::get().link({
-            .include               = include.value_or(std::vector<vencord::prop>{}),
-            .exclude               = exclude.value_or(std::vector<vencord::prop>{}),
+            .include               = include.value_or(std::vector<vencord::node>{}),
+            .exclude               = exclude.value_or(std::vector<vencord::node>{}),
             .ignore_devices        = ignore_devices.value_or(true),
             .ignore_input_media    = ignore_input_media.value_or(true),
             .only_default_speakers = only_default_speakers.value_or(true),
-            .workaround            = workaround.value_or(std::vector<vencord::prop>{}),
+            .workaround            = workaround.value_or(std::vector<vencord::node>{}),
         });
 
         return Napi::Boolean::New(env, true);

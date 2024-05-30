@@ -19,6 +19,21 @@ namespace vencord
         std::string name;
     };
 
+    bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-value-param)
+    {
+        auto props_match = [&](const auto &prop)
+        {
+            return props[prop.first] == prop.second;
+        };
+
+        auto match = [&](const auto &target)
+        {
+            return ranges::all_of(target, props_match);
+        };
+
+        return ranges::any_of(targets, match);
+    }
+
     patchbay::impl::~impl()
     {
         cleanup(true);
@@ -59,6 +74,73 @@ namespace vencord
         }
 
         throw std::runtime_error("Failed to create patchbay instance");
+    }
+
+    port_map patchbay::impl::map_ports(const node_with_ports &target)
+    {
+        port_map rtn;
+
+        auto is_output = [](const auto &item)
+        {
+            return item.direction == pw::port_direction::output;
+        };
+        auto is_input = [](const auto &item)
+        {
+            return item.direction == pw::port_direction::input;
+        };
+
+        const auto mic  = nodes[virt_mic->id()];
+        auto mic_inputs = mic.ports | ranges::views::filter(is_input);
+
+        const auto id             = target.info.id;
+        const auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
+
+        if (target_outputs.empty())
+        {
+            logger::get()->warn("[patchbay] (map_ports) {} has no ports", id);
+            return rtn;
+        }
+
+        const auto is_mono = target_outputs.size() == 1;
+
+        if (is_mono)
+        {
+            logger::get()->debug("[patchbay] (map_ports) {} is mono", id);
+        }
+
+        for (const auto &port : target_outputs)
+        {
+            auto port_props = port.props;
+
+            auto matching_channel = [is_mono, &port_props](auto &item)
+            {
+                if (is_mono)
+                {
+                    return true;
+                }
+
+                auto props = item.props;
+
+                if (props["audio.channel"] == "UNK" || port_props["audio.channel"] == "UNK")
+                {
+                    return props["port.id"] == port_props["port.id"];
+                }
+
+                return props["audio.channel"] == port_props["audio.channel"];
+            };
+
+            auto mapping =
+                mic_inputs                                                                                          //
+                | ranges::views::filter(matching_channel)                                                           //
+                | ranges::views::transform([port](const auto &mic_port) { return std::make_pair(mic_port, port); }) //
+                | ranges::to<std::vector>;
+
+            ranges::move(mapping, std::back_inserter(rtn));
+
+            logger::get()->debug("[patchbay] (map_ports) {} maps to {} mic port(s)", port.id, mapping.size());
+        }
+
+        return rtn;
     }
 
     void patchbay::impl::create_mic()
@@ -192,73 +274,6 @@ namespace vencord
         logger::get()->debug("[patchbay] (link) linked all ports of {}", id);
     }
 
-    port_map patchbay::impl::map_ports(const node_with_ports &target)
-    {
-        port_map rtn;
-
-        auto is_output = [](const auto &item)
-        {
-            return item.direction == pw::port_direction::output;
-        };
-        auto is_input = [](const auto &item)
-        {
-            return item.direction == pw::port_direction::input;
-        };
-
-        const auto mic  = nodes[virt_mic->id()];
-        auto mic_inputs = mic.ports | ranges::views::filter(is_input);
-
-        const auto id             = target.info.id;
-        const auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
-
-        if (target_outputs.empty())
-        {
-            logger::get()->warn("[patchbay] (map_ports) {} has no ports", id);
-            return rtn;
-        }
-
-        const auto is_mono = target_outputs.size() == 1;
-
-        if (is_mono)
-        {
-            logger::get()->debug("[patchbay] (map_ports) {} is mono", id);
-        }
-
-        for (const auto &port : target_outputs)
-        {
-            auto port_props = port.props;
-
-            auto matching_channel = [is_mono, &port_props](auto &item)
-            {
-                if (is_mono)
-                {
-                    return true;
-                }
-
-                auto props = item.props;
-
-                if (props["audio.channel"] == "UNK" || port_props["audio.channel"] == "UNK")
-                {
-                    return props["port.id"] == port_props["port.id"];
-                }
-
-                return props["audio.channel"] == port_props["audio.channel"];
-            };
-
-            auto mapping =
-                mic_inputs                                                                                          //
-                | ranges::views::filter(matching_channel)                                                           //
-                | ranges::views::transform([port](const auto &mic_port) { return std::make_pair(mic_port, port); }) //
-                | ranges::to<std::vector>;
-
-            ranges::move(mapping, std::back_inserter(rtn));
-
-            logger::get()->debug("[patchbay] (map_ports) {} maps to {} mic port(s)", port.id, mapping.size());
-        }
-
-        return rtn;
-    }
-
     void patchbay::impl::meta_update(std::string_view key, pw::metadata_property prop)
     {
         logger::get()->debug(R"([patchbay] (meta_update) metadata property changed: "{}" (value: "{}"))", key,
@@ -310,12 +325,7 @@ namespace vencord
             return;
         }
 
-        auto match = [&output_props](const auto &prop)
-        {
-            return output_props[prop.key] == prop.value;
-        };
-
-        if (ranges::any_of(options.exclude, match))
+        if (matches(options.exclude, output_props))
         {
             return;
         }
@@ -349,18 +359,13 @@ namespace vencord
             return;
         }
 
-        auto match = [&props](const auto &prop)
-        {
-            return props[prop.key] == prop.value;
-        };
-
-        if (ranges::any_of(options.exclude, match))
+        if (matches(options.exclude, props))
         {
             logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
             return;
         }
 
-        if (!ranges::any_of(options.include, match))
+        if (!matches(options.include, props))
         {
             logger::get()->debug("[patchbay] (on_node) {} is not included", id);
             return;
@@ -397,12 +402,7 @@ namespace vencord
 
         logger::get()->trace("[patchbay] (handle) workaround is active ({})", glz::write_json(options.workaround));
 
-        auto match = [&props](const auto &prop)
-        {
-            return props[prop.key] == prop.value;
-        };
-
-        if (!ranges::all_of(options.workaround, match))
+        if (!matches(options.workaround, props))
         {
             return on_node(id);
         }
