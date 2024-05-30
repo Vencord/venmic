@@ -33,14 +33,14 @@ The Rest-Server exposes three simple endpoints
   {
     "include": 
     [
-      { "key": "node.name", "value": "Firefox" }
+      { "node.name": "Firefox" }
     ],
     "exclude":
     [
-      { "key": "node.name", "value": "Chrome" }
+      { "node.name": "Chrome" }
     ]
     "ignore_devices": true,
-    "workaround": [{ "key": "node.name", "value": "Chrome" }]
+    "workaround": [{ "node.name": "Chrome" }]
   }
   </pre>
 
@@ -58,6 +58,9 @@ The Rest-Server exposes three simple endpoints
 
   The setting `only_default_speakers` is optional and will default to `true`.  
   When enabled it will prevent linking against nodes that don't play to the default speaker.
+
+  The setting `ignore_input_media` is optional and will default to `true`.  
+  When enabled it will prevent linking against nodes have a "Input" media-class.
 
   The setting `workaround` is also optional and will default to an empty array.  
   When set, venmic will redirect the first node that matches all of the specified properties to itself.
@@ -90,9 +93,8 @@ It is highly recommended to include this log file in your issue report otherwise
 
 ## 🤝 Acknowledgements
 
-This project heavily relies on the following projects:
-
 * [Curve/rohrkabel](https://github.com/Curve/rohrkabel/)
 * [cmake-js](https://github.com/cmake-js/cmake-js)
+* [@wwmm](https://github.com/wwmm) for improving compatibility with [EasyEffects](https://github.com/wwmm/easyeffects)
 
 Kudos to all the developers involved, keep up the great work!
