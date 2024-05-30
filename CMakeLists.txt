@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 3.6.1)
+project(venmic LANGUAGES CXX VERSION 4.0.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -111,7 +111,7 @@ CPMFindPackage(
 
 CPMFindPackage(
   NAME           glaze
-  VERSION        2.6.5
+  VERSION        2.6.8
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
