@@ -577,11 +577,13 @@ namespace vencord
             }
             else
             {
-                const auto error = updated.error();
-                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, error.message);
+                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, updated.error().message);
             }
 
-            return node{props};
+            auto rtn             = node{props};
+            nodes[id].info.props = std::move(props);
+
+            return rtn;
         };
 
         logger::get()->trace("[patchbay] (receive): listing nodes ({{{}}})", fmt::join(req.props, ","));
