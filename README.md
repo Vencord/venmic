@@ -56,6 +56,9 @@ The Rest-Server exposes three simple endpoints
   The setting `ignore_devices` is optional and will default to `true`.  
   When enabled it will prevent hardware-devices like speakers and microphones from being linked to the virtual microphone.
 
+  The setting `only_speakers` is optional and will default to `true`.  
+  When enabled it will prevent linking against nodes that don't play to a speaker.
+
   The setting `only_default_speakers` is optional and will default to `true`.  
   When enabled it will prevent linking against nodes that don't play to the default speaker.
 

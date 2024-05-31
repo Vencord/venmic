@@ -305,16 +305,16 @@ namespace vencord
 
         if (options.only_default_speakers && input_id != speaker->id)
         {
-            logger::get()->trace("[patchbay] (on_link) {} is not connected to speaker but with {}", id, input_id);
+            logger::get()->debug("[patchbay] (on_link) {} is not connected to speaker but with {}", id, input_id);
             return;
         }
 
         auto output_props = nodes[output_id].info.props; // The node emitting sound
         auto input_props  = nodes[input_id].info.props;  // The node receiving sound
 
-        if (!options.only_default_speakers && input_props["device.id"].empty())
+        if (options.only_speakers && input_props["device.id"].empty())
         {
-            logger::get()->trace("[patchbay] (on_link) {} is not playing to a device: {}", id, input_id);
+            logger::get()->debug("[patchbay] (on_link) {} is not playing to a device: {}", id, input_id);
             return;
         }
 

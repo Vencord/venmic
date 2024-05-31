@@ -15,7 +15,9 @@ namespace vencord
         std::vector<node> exclude;
 
       public:
-        bool ignore_devices{true};        // Only link against non-device nodes
+        bool ignore_devices{true}; // Only link against non-device nodes
+      public:
+        bool only_speakers{true};         // Ignore nodes that don't play to speakers
         bool only_default_speakers{true}; // Ignore nodes that don't play to the default speaker
 
       public:
