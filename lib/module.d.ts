@@ -18,7 +18,6 @@ export interface LinkData
     exclude: Node[];
 
     ignore_devices?: boolean;
-    ignore_input_media?: boolean;
     only_default_speakers?: boolean;
     
     workaround?: Node[];

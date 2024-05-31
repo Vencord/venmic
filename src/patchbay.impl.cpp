@@ -228,13 +228,6 @@ namespace vencord
             return;
         }
 
-        if (options.ignore_input_media && props["media.class"].find("Input") != std::string::npos)
-        {
-            logger::get()->warn("[patchbay] (link) prevented link to node with input class: {} (\"{}\")", id,
-                                props["media.class"]);
-            return;
-        }
-
         logger::get()->debug("[patchbay] (link) linking {}", id);
 
         auto mapping = map_ports(target);

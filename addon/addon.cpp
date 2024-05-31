@@ -171,7 +171,6 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
         auto include               = to_array<vencord::node>(data.Get("include"));
         auto exclude               = to_array<vencord::node>(data.Get("exclude"));
         auto ignore_devices        = convert<bool>(data.Get("ignore_devices"));
-        auto ignore_input_media    = convert<bool>(data.Get("ignore_input_media"));
         auto only_default_speakers = convert<bool>(data.Get("only_default_speakers"));
         auto workaround            = to_array<vencord::node>(data.Get("workaround"));
 
@@ -188,7 +187,6 @@ struct patchbay : public Napi::ObjectWrap<patchbay>
             .include               = include.value_or(std::vector<vencord::node>{}),
             .exclude               = exclude.value_or(std::vector<vencord::node>{}),
             .ignore_devices        = ignore_devices.value_or(true),
-            .ignore_input_media    = ignore_input_media.value_or(true),
             .only_default_speakers = only_default_speakers.value_or(true),
             .workaround            = workaround.value_or(std::vector<vencord::node>{}),
         });
