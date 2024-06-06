@@ -11,7 +11,7 @@
   "private": false,
   "license": "MPL-2.0",
   "author": "Curve (https://github.com/Curve)",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "main": "./lib/index.js",
   "types": "./lib/module.d.ts",
   "scripts": {
