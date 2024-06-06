@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 6.0.0)
+project(venmic LANGUAGES CXX VERSION 6.1.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -87,7 +87,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        6.0
+  VERSION        7.0
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 

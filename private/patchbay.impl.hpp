@@ -98,7 +98,7 @@ namespace vencord
 
       private:
         std::shared_ptr<pw::core> core;
-        std::shared_ptr<pw::registry> registry;
+        std::optional<pw::registry> registry;
 
       private:
         std::atomic_bool should_exit{false};

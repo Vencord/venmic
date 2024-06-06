@@ -636,8 +636,8 @@ namespace vencord
         auto loop    = pw::main_loop::create();
         auto context = pw::context::create(loop);
 
-        core     = context ? context->core() : nullptr;
-        registry = core ? core->registry() : nullptr;
+        core     = context ? pw::core::create(context) : nullptr;
+        registry = core ? pw::registry::create(core) : std::nullopt;
 
         if (!core || !registry)
         {
