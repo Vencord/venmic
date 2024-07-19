@@ -8,6 +8,7 @@ project(venmic LANGUAGES CXX VERSION 6.1.0)
 option(venmic_addon         "Build as addon"                            OFF)
 option(venmic_server        "Build as rest server"                       ON)
 option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
+option(venmic_static_cxx    "Static link libstdc++ and libgcc"          OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Addon and Rest-Server are mutually exclusive
@@ -154,4 +155,8 @@ endif()
 
 if (venmic_addon)
   add_subdirectory(addon)
+endif()
+
+if (venmic_static_cxx)
+  target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++)
 endif()

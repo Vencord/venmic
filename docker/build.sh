@@ -10,4 +10,4 @@ cd /work
 export MAKEFLAGS=-j$(nproc)
 export PARALLEL_LEVEL=$(nproc)
 
-pnpm install --ignore-scripts && pnpm run install
+pnpm install --ignore-scripts && pnpm run install:static
