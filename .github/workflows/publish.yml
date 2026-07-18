@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🤖 Setup Qemu
         uses: docker/setup-qemu-action@v3
@@ -43,7 +43,7 @@ jobs:
 
       - name: ♻️ Reuse Artifact
         if: ${{ github.event.inputs.fix == 'true' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: addon-${{ matrix.arch }}
           path: build/Release
@@ -51,7 +51,7 @@ jobs:
           run-id: ${{ github.event.inputs.reuse }}
 
       - name: 📤 Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: addon-${{ matrix.arch }}
           path: build/Release
@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🛑 Check Tag
         if: ${{ github.event.inputs.no-tag-check != 'true' }}
@@ -91,7 +91,7 @@ jobs:
         run: pnpm install --ignore-scripts
 
       - name: 📦 Download Build (amd64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: addon-amd64
           path: build/Release
@@ -100,7 +100,7 @@ jobs:
         run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=x64
 
       - name: 📦 Download Build (arm64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: addon-arm64
           path: build/Release

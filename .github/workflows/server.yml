@@ -7,11 +7,11 @@ name: 🏗️ Build Server
 jobs:
   build-fedora:
     runs-on: ubuntu-latest
-    container: fedora:38
+    container: fedora:42
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 👷 Build Dependencies
         run: |
@@ -24,7 +24,7 @@ jobs:
           cmake --build build
 
       - name: 🚀 Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: server-amd64
           path: build/server
