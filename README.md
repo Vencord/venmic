@@ -63,7 +63,7 @@ The Rest-Server exposes three simple endpoints
   When enabled it will prevent linking against nodes that don't play to the default speaker.
 
   The setting `legacy_workaround` is also optional and will default to `false`.  
-  When set, venmic will link the workaround directly directly without using metadata (this is mainly intended for older pipewire versions). 
+  When set, venmic will link the workaround target directly without using the metadata (this is mainly intended for older pipewire versions). 
 
   The setting `workaround` is also optional and will default to an empty array.  
   When set, venmic will redirect the first node that matches all of the specified properties to itself.
