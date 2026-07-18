@@ -1,11 +1,22 @@
 #pragma once
+
 #include <memory>
-#include <spdlog/spdlog.h>
+#include <format>
 
 namespace vencord
 {
-    class logger
+    struct logger
     {
+        enum class level : std::uint8_t
+        {
+            trace,
+            debug,
+            info,
+            warn,
+            error,
+        };
+
+      private:
         struct impl;
 
       private:
@@ -14,10 +25,19 @@ namespace vencord
       private:
         logger();
 
+      private:
+        void log(level, std::string_view) const;
+
       public:
-        spdlog::logger *operator->() const;
+        template <typename... Ts>
+        void operator()(std::format_string<Ts...>, Ts &&...) const;
+
+        template <typename... Ts>
+        void operator()(level, std::format_string<Ts...>, Ts &&...) const;
 
       public:
         [[nodiscard]] static logger &get();
     };
 } // namespace vencord
+
+#include "logger.inl"

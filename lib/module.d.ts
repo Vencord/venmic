@@ -17,12 +17,13 @@ export interface LinkData
     include: Node[];
     exclude: Node[];
 
-    ignore_devices?: boolean;
-
     only_speakers?: boolean;
     only_default_speakers?: boolean;
+
+    ignore_devices?: boolean;
     
     workaround?: Node[];
+    legacy_workaround?: boolean;
 }
 
 export class PatchBay

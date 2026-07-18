@@ -1,6 +1,8 @@
 #include "logger.hpp"
 
 #include <filesystem>
+
+#include <spdlog/spdlog.h>
 #include <spdlog/sinks/ansicolor_sink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
@@ -13,18 +15,18 @@ namespace vencord
         std::unique_ptr<spdlog::logger> logger;
     };
 
-    static fs::path log_directory()
+    static fs::path log_directory() // NOLINT(*-anonymous-namespace)
     {
         auto rtn = fs::temp_directory_path();
 
         // NOLINTNEXTLINE(*-mt-unsafe)
-        if (auto *home = std::getenv("HOME"))
+        if (auto *const home = std::getenv("HOME"))
         {
             rtn = fs::path{home} / ".local" / "state";
         }
 
         // NOLINTNEXTLINE(*-mt-unsafe)
-        if (auto *state_home = std::getenv("XDG_STATE_HOME"))
+        if (auto *const state_home = std::getenv("XDG_STATE_HOME"))
         {
             rtn = state_home;
         }
@@ -40,7 +42,7 @@ namespace vencord
         m_impl->logger->set_level(spdlog::level::trace);
         m_impl->logger->flush_on(spdlog::level::trace);
 
-        auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
+        const auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
         stdout_sink->set_level(spdlog::level::info);
 
         m_impl->logger->sinks().emplace_back(stdout_sink);
@@ -51,7 +53,7 @@ namespace vencord
             return;
         }
 
-        auto directory = log_directory();
+        const auto directory = log_directory();
 
         if (!fs::exists(directory))
         {
@@ -59,7 +61,7 @@ namespace vencord
             fs::create_directories(directory, ec);
         }
 
-        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>((directory / "venmic.log").string());
+        const auto file_sink = std::make_shared<sinks::basic_file_sink_mt>((directory / "venmic.log").string());
 
         file_sink->set_level(spdlog::level::trace);
         stdout_sink->set_level(spdlog::level::trace);
@@ -67,9 +69,28 @@ namespace vencord
         m_impl->logger->sinks().emplace_back(file_sink);
     }
 
-    spdlog::logger *logger::operator->() const
+    void logger::log(logger::level level, std::string_view message) const
     {
-        return m_impl->logger.get();
+        switch (level)
+        {
+            using enum logger::level;
+
+        case trace:
+            m_impl->logger->trace(message);
+            break;
+        case debug:
+            m_impl->logger->debug(message);
+            break;
+        case info:
+            m_impl->logger->info(message);
+            break;
+        case warn:
+            m_impl->logger->warn(message);
+            break;
+        case error:
+            m_impl->logger->error(message);
+            break;
+        }
     }
 
     logger &logger::get()

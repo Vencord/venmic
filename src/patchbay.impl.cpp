@@ -1,46 +1,18 @@
 #include "patchbay.impl.hpp"
-
 #include "logger.hpp"
 
-#include <iterator>
-#include <charconv>
-#include <stdexcept>
+#include <string_view>
 
-#include <range/v3/view.hpp>
-#include <range/v3/algorithm.hpp>
+#include <rohrkabel/device/device.hpp>
+#include <rohrkabel/registry/events.hpp>
+#include <rohrkabel/registry/registry.hpp>
 
 #include <glaze/glaze.hpp>
-#include <rohrkabel/device/device.hpp>
 
 namespace vencord
 {
-    struct pw_metadata_name
-    {
-        std::string name;
-    };
-
-    bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-value-param)
-    {
-        auto props_match = [&](const auto &prop)
-        {
-            return props[prop.first] == prop.second;
-        };
-
-        auto match = [&](const auto &target)
-        {
-            return ranges::all_of(target, props_match);
-        };
-
-        return ranges::any_of(targets, match);
-    }
-
-    patchbay::impl::~impl()
-    {
-        should_exit = true;
-
-        sender->send(quit{});
-        receiver->recv_as<quit>();
-    }
+    using enum logger::level;
+    using namespace std::chrono_literals;
 
     patchbay::impl::impl()
     {
@@ -49,131 +21,28 @@ namespace vencord
 
         sender   = std::make_unique<pw_recipe::sender>(std::move(pw_sender));
         receiver = std::make_unique<cr_recipe::receiver>(std::move(cr_receiver));
+        worker   = std::jthread{std::bind_front(&impl::start, this), std::move(pw_receiver), std::move(cr_sender)};
 
-        auto thread_start = [this](auto receiver, auto sender)
+        if (!receiver->recv_as<ready>()->success)
         {
-            start(std::move(receiver), std::move(sender));
-        };
-
-        thread = std::jthread{thread_start, std::move(pw_receiver), cr_sender};
-
-        auto response = receiver->recv_timeout_as<ready>(std::chrono::seconds(1));
-
-        if (!response.has_value())
-        {
-            logger::get()->error("[patchbay] (init) pw_receiver failed to respond within 1 second, aborting");
-
-            sender->send(abort{});
-            response = receiver->recv_as<ready>();
+            throw std::runtime_error{"failed to create patchbay instance"};
         }
 
-        if (response->success)
-        {
-            logger::get()->trace("[patchbay] (init) pw_receiver is ready");
-            return;
-        }
-
-        throw std::runtime_error("Failed to create patchbay instance");
+        logger::get()(trace, "[patchbay] (init) pw_receiver is ready");
     }
 
-    port_map patchbay::impl::map_ports(const node_with_ports &target)
+    patchbay::impl::~impl()
     {
-        port_map rtn;
-
-        auto is_output = [](const auto &item)
-        {
-            return item.direction == pw::port_direction::output;
-        };
-        auto is_input = [](const auto &item)
-        {
-            return item.direction == pw::port_direction::input;
-        };
-
-        const auto mic  = nodes[virt_mic->id()];
-        auto mic_inputs = mic.ports | ranges::views::filter(is_input);
-
-        const auto id             = target.info.id;
-        const auto target_outputs = target.ports | ranges::views::filter(is_output) | ranges::to<std::vector>;
-
-        if (target_outputs.empty())
-        {
-            logger::get()->warn("[patchbay] (map_ports) {} has no ports", id);
-            return rtn;
-        }
-
-        const auto is_mono = target_outputs.size() == 1;
-
-        if (is_mono)
-        {
-            logger::get()->debug("[patchbay] (map_ports) {} is mono", id);
-        }
-
-        for (const auto &port : target_outputs)
-        {
-            auto port_props = port.props;
-
-            auto matching_channel = [is_mono, &port_props](auto &item)
-            {
-                if (is_mono)
-                {
-                    return true;
-                }
-
-                auto props = item.props;
-
-                if (props["audio.channel"] == "UNK" || port_props["audio.channel"] == "UNK")
-                {
-                    return props["port.id"] == port_props["port.id"];
-                }
-
-                return props["audio.channel"] == port_props["audio.channel"];
-            };
-
-            auto mapping =
-                mic_inputs                                                                                          //
-                | ranges::views::filter(matching_channel)                                                           //
-                | ranges::views::transform([port](const auto &mic_port) { return std::make_pair(mic_port, port); }) //
-                | ranges::to<std::vector>;
-
-            ranges::move(mapping, std::back_inserter(rtn));
-
-            logger::get()->debug("[patchbay] (map_ports) {} maps to {} mic port(s)", port.id, mapping.size());
-        }
-
-        return rtn;
+        sender->send(quit{});
+        receiver->try_recv_as<quit>(500ms);
     }
 
-    void patchbay::impl::create_mic()
+    void patchbay::impl::cleanup(clean kind)
     {
-        logger::get()->trace("[patchbay] (create_mic) creating virt-mic");
+        virt_links.clear();
+        workaround_target.reset();
 
-        auto node = core->create<pw::node>(pw::null_sink_factory{
-                                               .name      = "vencord-screen-share",
-                                               .positions = {"FL", "FR"},
-                                           })
-                        .get();
-
-        while (nodes[node->id()].ports.size() < 4)
-        {
-            core->update();
-        }
-
-        virt_mic = std::make_unique<pw::node>(std::move(*node));
-
-        logger::get()->info("[patchbay] (create_mic) created: {}", virt_mic->id());
-    }
-
-    void patchbay::impl::cleanup(bool mic)
-    {
-        created.clear();
-
-        if (metadata && lettuce_target)
-        {
-            metadata->clear_property(lettuce_target.value(), "target.node");
-            metadata->clear_property(lettuce_target.value(), "target.object");
-        }
-
-        if (!mic)
+        if (kind != clean::with_mic)
         {
             return;
         }
@@ -181,499 +50,678 @@ namespace vencord
         virt_mic.reset();
     }
 
-    void patchbay::impl::reload()
+    coco::task<void> patchbay::impl::create_mic()
     {
-        cleanup(false);
+        auto node = co_await core->create(pw::null_sink_factory{
+            .name      = "vencord-screen-share",
+            .positions = {"FL", "FR"},
+        });
 
-        for (const auto &[id, info] : nodes)
+        if (!node.has_value())
         {
-            on_node(id);
+            co_return logger::get()(error, "[patchbay] (create_mic) failed to create null-sink: {}", node.error().message);
         }
 
-        for (const auto &[id, info] : links)
+        const auto info = node->info();
+        auto ports      = std::map<std::uint32_t, pw::port_info>{};
+
+        while ((ports = ports_of(info)).size() < 4)
         {
-            on_link(id);
+            co_await core->sync();
         }
 
-        logger::get()->debug("[patchbay] (reload) finished");
+        virt_mic.emplace(std::move(*node));
+
+        const auto port_numbers = ports //
+                                  | std::views::transform([](auto &&port) { return port.first; });
+
+        logger::get()("[patchbay] (create_mic) created {} with ports: {}", virt_mic->id(), port_numbers);
     }
 
-    void patchbay::impl::link(std::uint32_t id)
+    static bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-anonymous-namespace)
     {
-        if (!virt_mic)
+        const auto props_match = [&](const auto &prop)
         {
-            return;
+            return props[prop.first] == prop.second;
+        };
+
+        const auto has_target = [&](const auto &target)
+        {
+            return std::ranges::all_of(target, props_match);
+        };
+
+        return std::ranges::any_of(targets, has_target);
+    }
+
+    coco::task<void> patchbay::impl::redirect(std::optional<pw::node_info> info)
+    {
+        if (!meta.has_value())
+        {
+            co_return;
         }
 
-        const auto mic_id = virt_mic->id();
-
-        if (id == mic_id)
+        if (!virt_mic.has_value())
         {
-            logger::get()->warn("[patchbay] (link) prevented link to self");
-            return;
+            co_return;
         }
 
-        if (!nodes.contains(id))
+        const auto pred = [this](const auto &item)
         {
-            logger::get()->warn("[patchbay] (link) called with bad node: {}", id);
-            return;
+            return matches(options.workaround, item.props);
+        };
+
+        if (!info.has_value())
+        {
+            const auto node = std::ranges::find_if(nodes, pred, [](auto &&item) { return item.second; });
+            info            = (node == nodes.end() ? std::nullopt : std::optional<pw::node_info>{node->second});
+        }
+        else if (!pred(*info))
+        {
+            co_return;
         }
 
-        const auto &target = nodes[id];
-        auto props         = target.info.props;
-
-        if (options.ignore_devices && !props["device.id"].empty())
+        if (!info.has_value())
         {
-            logger::get()->warn("[patchbay] (link) prevented link to device: {}", id);
-            return;
+            co_return;
         }
 
-        logger::get()->debug("[patchbay] (link) linking {}", id);
-
-        auto mapping = map_ports(target);
-
-        for (auto [it, end] = created.equal_range(id); it != end; ++it)
+        const auto make = []<typename T>(auto id, T &&fn)
         {
-            auto equal = [info = it->second.info()](const auto &map)
+            return std::shared_ptr<std::uint32_t>{new std::uint32_t{id}, [fn = std::forward<T>(fn)](auto *item)
+                                                  {
+                                                      fn(*item);
+                                                      delete item;
+                                                  }};
+        };
+
+        if (options.legacy_workaround)
+        {
+            workaround_target = make(info->id, [this](auto id) { virt_links.erase(id); });
+            co_return co_await link(virt_mic->info(), *info);
+        }
+
+        const auto serial  = virt_mic->info().props.at("object.serial");
+        const auto cleanup = [this](auto id)
+        {
+            if (!meta.has_value())
             {
-                return map.first.id == info.input.port && map.second.id == info.output.port;
-            };
-
-            std::erase_if(mapping, equal);
-        }
-
-        for (auto [mic_port, target_port] : mapping)
-        {
-            auto link = core->create<pw::link>(pw::link_factory{
-                                                   mic_port.id,
-                                                   target_port.id,
-                                               })
-                            .get();
-
-            if (!link.has_value())
-            {
-                logger::get()->warn("[patchbay] (link) failed to link {} (mic) -> {} (node): {}", mic_port.id,
-                                    target_port.id, link.error().message);
-
                 return;
             }
 
-            logger::get()->debug("[patchbay] (link) created {}: {} (mic) -> {} (node) (channel: {})", link->id(),
-                                 mic_port.id, target_port.id, target_port.props["audio.channel"]);
+            meta->value.clear_property(id, "target.object");
+            meta->value.clear_property(id, "target.node");
+        };
 
-            created.emplace(id, std::move(*link));
+        workaround_target.reset();
+        {
+            meta->value.set_property(info->id, "target.object", "Spa:Id", serial);
+            meta->value.set_property(info->id, "target.node", "Spa:Id", std::format("{}", virt_mic->id()));
         }
-
-        logger::get()->debug("[patchbay] (link) linked all ports of {}", id);
+        workaround_target = make(info->id, cleanup);
     }
 
-    void patchbay::impl::meta_update(std::string_view key, pw::metadata_property prop)
+    bool patchbay::impl::should_link(const pw::node_info &node)
     {
-        logger::get()->debug(R"([patchbay] (meta_update) metadata property changed: "{}" (value: "{}"))", key,
-                             prop.value);
-
-        if (key != "default.audio.sink")
+        if (!options.include.empty() && !matches(options.include, node.props))
         {
-            return;
+            return false;
         }
 
-        auto parsed = glz::read_json<pw_metadata_name>(prop.value);
-
-        if (!parsed.has_value())
+        if (matches(options.exclude, node.props))
         {
-            logger::get()->warn("[patchbay] (meta_update) failed to parse speaker");
-            return;
+            return false;
         }
 
-        speaker.emplace(parsed->name);
-        logger::get()->info(R"([patchbay] (meta_update) speaker name: "{}")", speaker->name);
-
-        reload();
-    }
-
-    void patchbay::impl::on_link(std::uint32_t id)
-    {
-        if (!options.include.empty() || (options.only_default_speakers && !speaker))
-        {
-            return;
-        }
-
-        const auto &info = links[id];
-
-        const auto output_id = info.output.node;
-        const auto input_id  = info.input.node;
-
-        if (options.only_default_speakers && input_id != speaker->id)
-        {
-            logger::get()->debug("[patchbay] (on_link) {} is not connected to speaker but with {}", id, input_id);
-            return;
-        }
-
-        auto output_props = nodes[output_id].info.props; // The node emitting sound
-        auto input_props  = nodes[input_id].info.props;  // The node receiving sound
-
-        if (options.only_speakers && input_props["device.id"].empty())
-        {
-            logger::get()->debug("[patchbay] (on_link) {} is not playing to a device: {}", id, input_id);
-            return;
-        }
-
-        if (matches(options.exclude, output_props))
-        {
-            return;
-        }
-
-        core->update();
-
-        link(output_id);
-    }
-
-    void patchbay::impl::on_node(std::uint32_t id)
-    {
-        const auto &[info, ports] = nodes[id];
-        auto props                = info.props;
-
-        if (speaker && props["node.name"] == speaker->name)
-        {
-            logger::get()->debug("[patchbay] (on_node) speakers are {}", id);
-            speaker->id = id;
-
-            return;
-        }
-
-        if (options.include.empty())
-        {
-            return;
-        }
+        auto ports = ports_of(node);
 
         if (ports.empty())
         {
-            logger::get()->debug("[patchbay] (on_node) {} has no ports", id);
-            return;
+            return false;
         }
 
-        if (matches(options.exclude, props))
+        if (virt_mic.has_value() && virt_mic->id() == node.id)
         {
-            logger::get()->debug("[patchbay] (on_node) {} is excluded", id);
-            return;
+            return false;
         }
 
-        if (!matches(options.include, props))
+        auto props = node.props;
+
+        if (options.ignore_devices && !props["device.id"].empty())
         {
-            logger::get()->debug("[patchbay] (on_node) {} is not included", id);
-            return;
+            return false;
         }
 
-        created.erase(id);
-        core->update();
+        const auto outputs = [](const auto &item)
+        {
+            return item.second.input.node;
+        };
 
-        link(id);
+        const auto exists = [this](const auto &id)
+        {
+            return nodes.contains(id);
+        };
+
+        const auto info = [this](const auto &id)
+        {
+            return nodes[id];
+        };
+
+        const auto links   = links_of(node);
+        const auto targets = links                            //
+                             | std::views::transform(outputs) //
+                             | std::views::filter(exists)     //
+                             | std::views::transform(info)    //
+                             | std::ranges::to<std::vector>();
+
+        const auto is_device = [](const auto &item)
+        {
+            return item.props.contains("device.id");
+        };
+
+        if (options.only_speakers && !std::ranges::any_of(targets, is_device))
+        {
+            return false;
+        }
+
+        if (!options.only_default_speakers)
+        {
+            return true;
+        }
+
+        if (!default_speaker || !default_speaker->id)
+        {
+            return false;
+        }
+
+        return std::ranges::contains(targets, default_speaker->id, [](auto &&item) { return item.id; });
+    }
+
+    coco::task<void> patchbay::impl::link(pw::node_info from, pw::node_info to)
+    {
+        const auto is_input = [](const auto &item)
+        {
+            return item.second.direction == pw::port_direction::input;
+        };
+
+        const auto is_output = [](const auto &item)
+        {
+            return item.second.direction == pw::port_direction::output;
+        };
+
+        const auto from_ports = ports_of(from);
+        const auto outputs    = from_ports | std::views::filter(is_output) | std::ranges::to<std::map>();
+        const auto mono       = outputs.size() == 1;
+
+        const auto to_ports = ports_of(to);
+        const auto inputs   = to_ports | std::views::filter(is_input) | std::ranges::to<std::map>();
+
+        const auto pred = [mono](const pw::port_info &source, const auto &target)
+        {
+            if (mono)
+            {
+                return true;
+            }
+
+            auto source_props = source.props;
+            auto target_props = target.props;
+
+            const auto source_channel = source_props["audio.channel"];
+            const auto target_channel = target_props["audio.channel"];
+
+            if (source_channel == "UNK" || target_channel == "UNK")
+            {
+                return source_props["port.id"] == target_props["port.id"];
+            }
+
+            return source_channel == target_channel;
+        };
+
+        const auto transform = [](const auto &source, const auto &target)
+        {
+            return std::make_pair(source.id, target.id);
+        };
+
+        auto mapping = std::vector<link_mapping>{};
+        auto &links  = virt_links[to.id];
+
+        for (const auto &[source_id, source_port] : outputs)
+        {
+            std::ranges::move(inputs                                                               //
+                                  | std::views::values                                             //
+                                  | std::views::filter(std::bind_front(pred, source_port))         //
+                                  | std::views::transform(std::bind_front(transform, source_port)) //
+                                  | std::ranges::to<std::vector>(),
+                              std::back_inserter(mapping));
+        }
+
+        if (mapping.empty())
+        {
+            co_return logger::get()(warn, "[patchbay] (link) could not determine mapping for: {} -> {}", from.id, to.id);
+        }
+
+        for (const auto &pair : mapping)
+        {
+            links.erase(pair);
+
+            auto [source, target] = pair;
+            auto link             = co_await core->create(pw::link_factory{
+                .input  = target,
+                .output = source,
+            });
+
+            if (!link.has_value())
+            {
+                logger::get()(warn, "[patchbay] (link) failed to create link ({} -> {}): {}", source, target,
+                              link.error().message);
+                continue;
+            }
+
+            links.emplace(pair, std::move(*link));
+        }
+
+        logger::get()("[patchbay] (link) created links: {}", mapping);
+    }
+
+    std::map<std::uint32_t, pw::port_info> patchbay::impl::ports_of(const pw::node_info &info)
+    {
+        const auto node   = std::format("{}", info.id);
+        const auto filter = [node](const auto &item)
+        {
+            auto props = item.second.props;
+            return props["node.id"] == node;
+        };
+
+        return ports                        //
+               | std::views::filter(filter) //
+               | std::ranges::to<std::map>();
+    }
+
+    std::map<std::uint32_t, pw::link_info> patchbay::impl::links_of(const pw::node_info &info)
+    {
+        const auto filter = [&info](const auto &item)
+        {
+            return item.second.input.node == info.id || item.second.output.node == info.id;
+        };
+
+        return links                        //
+               | std::views::filter(filter) //
+               | std::ranges::to<std::map>();
     }
 
     template <>
-    void patchbay::impl::handle<pw::node>(pw::node &node, const pw::global &global)
+    coco::stray patchbay::impl::handle(pw::node node)
     {
-        const auto id = global.id;
+        const auto id = node.id();
+        auto info     = node.info();
+        auto props    = info.props;
 
-        auto info  = node.info();
-        auto props = info.props;
+        logger::get()(trace, "[patchbay] (handle) new node: {}", id);
+        logger::get()(trace, "[patchbay] (handle) └ node.name: {}", props["node.name"]);
+        logger::get()(trace, "[patchbay] (handle) └ application.name: {}", props["application.name"]);
+        logger::get()(trace, "[patchbay] (handle) └ application.process.binary: {}", props["application.process.binary"]);
 
-        nodes[id].info = std::move(info);
-
-        logger::get()->trace(R"([patchbay] (handle) new node: {} (name: "{}", app: "{}"))", id, props["node.name"],
-                             props["application.name"]);
-
-        if (!virt_mic)
+        if (default_speaker.has_value() && default_speaker->name == props["node.name"])
         {
-            return;
+            default_speaker->id = id;
+            logger::get()(trace, "[patchbay] (handle) found node for default speaker: {}", id);
         }
 
-        if (!metadata || options.workaround.empty())
+        if (virt_mic.has_value() && should_link(info))
         {
-            return on_node(id);
+            co_await link(info, virt_mic->info());
         }
 
-        logger::get()->trace("[patchbay] (handle) workaround is active ({})", glz::write_json(options.workaround));
+        co_await redirect(info);
 
-        if (!matches(options.workaround, props))
-        {
-            return on_node(id);
-        }
-
-        const auto serial = virt_mic->info().props["object.serial"];
-        logger::get()->debug("[patchbay] (handle) applying workaround to {} (serial = {})", id, serial);
-
-        // https://github.com/Vencord/venmic/issues/13#issuecomment-1884975782
-
-        metadata->set_property(id, "target.object", "Spa:Id", serial);
-        metadata->set_property(id, "target.node", "Spa:Id", std::to_string(virt_mic->id()));
-
-        lettuce_target.emplace(id);
-        options.workaround.clear();
-
-        core->update();
+        nodes[id] = std::move(info);
     }
 
     template <>
-    void patchbay::impl::handle<pw::link>(pw::link &link, const pw::global &global)
+    coco::stray patchbay::impl::handle(pw::port port)
     {
-        const auto id = global.id;
+        const auto id = port.id();
+        auto info     = port.info();
+        auto props    = info.props;
+
+        auto raw_parent = props["node.id"];
+        auto parent     = std::uint32_t{};
+
+        logger::get()(trace, "[patchbay] (handle) new port: {}", id);
+        logger::get()(trace, "[patchbay] (handle) └ parent: {}", raw_parent);
+
+        if (std::from_chars(raw_parent.data(), raw_parent.data() + raw_parent.size(), parent).ec != std::errc{})
+        {
+            co_return logger::get()(trace, "[patchbay] (handle) could not parse parent of {} (\"{}\")", id, raw_parent);
+        }
+
+        ports[id]       = std::move(info);
+        const auto node = nodes.find(parent);
+
+        if (node == nodes.end())
+        {
+            co_return;
+        }
+
+        if (virt_mic.has_value() && should_link(node->second))
+        {
+            co_await link(node->second, virt_mic->info());
+        }
+
+        co_await redirect(node->second);
+    }
+
+    template <>
+    coco::stray patchbay::impl::handle(pw::link link)
+    {
+        const auto id = link.id();
         auto info     = link.info();
+        auto props    = info.props;
 
-        logger::get()->trace(
-            "[patchbay] (handle) new link: {} (input-node: {}, output-node: {}, input-port: {}, output-port: {})", id,
-            info.input.node, info.output.node, info.input.port, info.output.port);
+        logger::get()(trace, "[patchbay] (handle) new link: {}", id);
+        logger::get()(trace, "[patchbay] (handle) └ from: {} (port: {})", info.output.node, info.output.port);
+        logger::get()(trace, "[patchbay] (handle) └ to: {} (port: {})", info.input.node, info.input.port);
+
+        const auto from = info.output.node;
+        const auto to   = info.input.node;
 
         links[id] = std::move(info);
 
-        on_link(id);
-    }
-
-    template <>
-    void patchbay::impl::handle<pw::port>(pw::port &port, const pw::global &global)
-    {
-        auto info  = port.info();
-        auto props = info.props;
-
-        if (!props.contains("node.id"))
+        if (!virt_mic.has_value())
         {
-            logger::get()->warn("[patchbay] (handle) {} has no parent", global.id);
-            return;
+            co_return;
         }
 
-        std::uint32_t parent{};
-
-        auto node_id = info.props["node.id"];
-        auto status  = std::from_chars(node_id.data(), node_id.data() + node_id.size(), parent);
-
-        if (status.ec != std::errc{})
+        if (virt_links.contains(from) || virt_links.contains(to))
         {
-            logger::get()->warn("[patchbay] (handle) {} failed to parse parent node: '{}'", global.id, node_id);
-            return;
+            co_return;
         }
 
-        nodes[parent].ports.emplace_back(std::move(info));
-        logger::get()->trace("[patchbay] (handle) new port: {} with parent {}", global.id, parent);
+        if (const auto it = nodes.find(from); it != nodes.end() && should_link(it->second))
+        {
+            co_await this->link(it->second, virt_mic->info());
+        }
 
-        // Check the parent again
-        on_node(parent);
+        if (const auto it = nodes.find(to); it != nodes.end() && should_link(it->second))
+        {
+            co_await this->link(it->second, virt_mic->info());
+        }
+
+        logger::get()(trace, "[patchbay] (handle) refreshed nodes ({} -> {}) attched to {}", from, to, id);
     }
 
-    template <>
-    void patchbay::impl::handle<pw::metadata>(pw::metadata &data, const pw::global &global)
+    struct pw_metadata_name // NOLINT(*-internal-linkage)
     {
-        auto props      = global.props;
-        auto properties = data.properties();
+        std::string name;
+    };
+
+    template <>
+    coco::stray patchbay::impl::handle(pw::metadata metadata)
+    {
+        auto info  = metadata.properties();
+        auto props = metadata.props();
+
+        const auto id   = metadata.id();
         const auto name = props["metadata.name"];
 
-        logger::get()->trace(R"([patchbay] (handle) new metadata: {} (name: "{}"))", global.id, name);
+        logger::get()(trace, "[patchbay] (handle) new metadata: {}", id);
+        logger::get()(trace, "[patchbay] (handle) └ name: {}", name);
 
         if (name != "default")
         {
-            return;
+            co_return;
         }
 
-        metadata      = std::make_unique<pw::metadata>(std::move(data));
-        meta_listener = std::make_unique<pw::metadata_listener>(metadata->listen());
+        auto *const raw = metadata.get();
+        meta.emplace(std::move(metadata), raw);
 
-        logger::get()->info("[patchbay] (handle) found default metadata: {}", global.id);
-
-        meta_listener->on<pw::metadata_event::property>(
-            [this](const char *key, auto property)
+        const auto update = [this](const char *raw, pw::metadata_property prop)
+        {
+            if (!raw)
             {
-                if (key)
-                {
-                    meta_update(key, std::move(property));
-                }
-
                 return 0;
-            });
+            }
 
-        meta_update("default.audio.sink", properties["default.audio.sink"]);
+            const auto key = std::string_view{raw};
+
+            if (key != "default.audio.sink")
+            {
+                return 0;
+            }
+
+            const auto parsed = glz::read_json<pw_metadata_name>(prop.value);
+
+            if (!parsed.has_value())
+            {
+                logger::get()(warn, "[patchbay] (meta) failed to parse speaker");
+                return 0;
+            }
+
+            const auto node = std::ranges::find_if(nodes,
+                                                   [&](const auto &info)
+                                                   {
+                                                       auto props = info.second.props;
+                                                       return props["node.name"] == parsed->name;
+                                                   });
+
+            default_speaker = speaker{
+                .name = parsed->name,
+            };
+
+            if (node != nodes.end())
+            {
+                default_speaker->id = node->first;
+            }
+
+            logger::get()("[patchbay] (meta) found default speaker: {}", parsed->name);
+            logger::get()("[patchbay] (meta) └ node: {}", node == nodes.end() ? "<pending>" : std::to_string(node->first));
+
+            return 0;
+        };
+
+        meta->listener.on<pw::metadata_event::property>(update);
+        update("default.audio.sink", info["default.audio.sink"]);
+
+        co_return co_await redirect();
     }
 
-    template <typename T>
-    void patchbay::impl::bind(const pw::global &global)
+    void patchbay::impl::add_global(pw::global global)
     {
-        auto bound = registry->bind<T>(global.id).get();
-
-        if (!bound.has_value())
+        const auto forward = []<typename T>(auto self, auto global, std::type_identity<T>) -> coco::stray
         {
-            logger::get()->warn("[patchbay] (bind) failed to bind {} (\"{}\"): {}", global.id, global.type,
-                                bound.error().message);
-            return;
-        }
+            auto bound = co_await self->registry->template bind<T>(global.id);
 
-        handle(bound.value(), global);
+            if (bound.has_value())
+            {
+                self->handle(std::move(*bound));
+                co_return;
+            }
+
+            logger::get()(warn, "[patchbay] (add_global) failed to bind {}: {}", global.id, bound.error().message);
+        };
+
+        logger::get()(trace, "[patchbay] (add_global) new global {}: {}", global.id, global.type);
+
+        if (global.type == pw::node::type)
+        {
+            forward(this, std::move(global), std::type_identity<pw::node>{});
+        }
+        else if (global.type == pw::port::type)
+        {
+            forward(this, std::move(global), std::type_identity<pw::port>{});
+        }
+        else if (global.type == pw::link::type)
+        {
+            forward(this, std::move(global), std::type_identity<pw::link>{});
+        }
+        else if (global.type == pw::metadata::type)
+        {
+            forward(this, std::move(global), std::type_identity<pw::metadata>{});
+        }
     }
 
     void patchbay::impl::del_global(std::uint32_t id)
     {
+        virt_links.erase(id);
+
         nodes.erase(id);
+        ports.erase(id);
         links.erase(id);
-        created.erase(id);
+
+        logger::get()(trace, "[patchbay] (del_global) removed global {}", id);
     }
 
-    void patchbay::impl::add_global(const pw::global &global)
+    template <typename T>
+    coco::stray patchbay::impl::receive(cr_recipe::sender, T)
     {
-        logger::get()->trace(R"([patchbay] (add_global) new global: {} (type: "{}"))", global.id, global.type);
-
-        if (global.type == pw::node::type)
-        {
-            bind<pw::node>(global);
-        }
-        else if (global.type == pw::metadata::type)
-        {
-            bind<pw::metadata>(global);
-        }
-        else if (global.type == pw::port::type)
-        {
-            bind<pw::port>(global);
-        }
-        else if (global.type == pw::link::type)
-        {
-            bind<pw::link>(global);
-        }
+        co_return co_await create_mic();
     }
 
     template <>
-    void patchbay::impl::receive(cr_recipe::sender &sender, list_nodes &req)
+    coco::stray patchbay::impl::receive(cr_recipe::sender, link_options opts)
     {
-        static const std::vector<std::string> required{"application.name", "node.name"};
-        const auto &props = req.props.empty() ? required : req.props;
-
-        auto desireable = [&props](const auto &item)
+        if (!virt_mic.has_value())
         {
-            auto item_props = item.second.info.props;
-            return ranges::all_of(props, [&](const auto &key) { return !item_props[key].empty(); });
+            co_await create_mic();
+        }
+
+        options = std::move(opts);
+        cleanup(clean::without_mic);
+
+        co_await virt_mic->sync();
+
+        const auto targets = nodes                                                           //
+                             | std::views::values                                            //
+                             | std::views::filter(std::bind_front(&impl::should_link, this)) //
+                             | std::ranges::to<std::vector>();
+
+        for (const auto &node : targets)
+        {
+            co_await link(node, virt_mic->info());
+        }
+
+        co_await redirect();
+    }
+
+    template <>
+    coco::stray patchbay::impl::receive(cr_recipe::sender, unset_target)
+    {
+        co_return cleanup(clean::with_mic);
+    }
+
+    template <>
+    coco::stray patchbay::impl::receive(cr_recipe::sender, quit)
+    {
+        default_speaker.reset();
+        cleanup(clean::with_mic);
+
+        co_return loop->quit();
+    }
+
+    template <>
+    coco::stray patchbay::impl::receive(cr_recipe::sender sender, list_nodes req)
+    {
+        static const auto required = std::vector<std::string>{"application.name", "node.name"};
+        const auto &props          = req.props.empty() ? required : req.props;
+
+        logger::get()(trace, "[patchbay] (receive) listing nodes ({})", props);
+
+        const auto desireable = [&props](const auto &item)
+        {
+            auto other = item.second.props;
+            return std::ranges::all_of(props, [&](const auto &key) { return !other[key].empty(); });
         };
-        auto can_output = [](const auto &item)
+
+        const auto can_output = [](const auto &item)
         {
-            return item.second.info.output.max > 0;
+            return item.second.output.max > 0;
         };
-        auto to_updated_node = [this](const auto &item)
+
+        const auto filtered = nodes                                    //
+                              | std::ranges::views::filter(desireable) //
+                              | std::ranges::views::filter(can_output) //
+                              | std::ranges::to<std::vector>();
+
+        logger::get()(trace, "[patchbay] (receive) found {} nodes", filtered.size());
+
+        auto rtn = std::vector<node>{};
+
+        for (const auto &[id, info] : filtered)
         {
-            /*
-             * Some nodes update their props (metadata) over time, and to avoid binding the node constantly,
-             * we simply rebind it to fetch the updates only when needed.
-             */
+            const auto bound = co_await registry->bind<pw::node>(id);
 
-            const auto &[id, data] = item;
-            auto props             = data.info.props;
-
-            logger::get()->trace("[patchbay] (receive): rebinding {}", id);
-            auto updated = registry->bind<pw::node>(id).get();
-
-            if (updated.has_value())
+            if (!bound.has_value())
             {
-                props = updated->info().props;
-            }
-            else
-            {
-                logger::get()->warn(R"([patchbay] (receive) failed to rebind {}: "{}")", id, updated.error().message);
+                logger::get()(warn, "[patchbay] (receive) failed to refresh {}: {}", id, bound.error().message);
+                continue;
             }
 
-            auto rtn             = node{props};
-            nodes[id].info.props = std::move(props);
-
-            return rtn;
-        };
-
-        logger::get()->trace("[patchbay] (receive): listing nodes ({{{}}})", fmt::join(req.props, ","));
-
-        core->update();
-
-        auto filtered = nodes                               //
-                        | ranges::views::filter(desireable) //
-                        | ranges::views::filter(can_output) //
-                        | ranges::to<std::vector>;
-
-        logger::get()->trace("[patchbay] (receive): found {} nodes", filtered.size());
-
-        auto rtn = filtered                                    //
-                   | ranges::views::transform(to_updated_node) //
-                   | ranges::to<std::vector>;
+            rtn.emplace_back(bound->info().props);
+        }
 
         sender.send(rtn);
     }
 
-    template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, link_options &req)
-    {
-        if (!virt_mic)
-        {
-            create_mic();
-        }
-
-        options = std::move(req);
-
-        reload();
-    }
-
-    template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] unset_target &)
-    {
-        cleanup(true);
-    }
-
-    template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] quit &)
-    {
-        core->context()->loop()->quit();
-    }
-
-    template <>
-    void patchbay::impl::receive([[maybe_unused]] cr_recipe::sender &, [[maybe_unused]] abort &)
-    {
-        should_exit = true;
-
-        update_source.request_stop();
-        core->context()->loop()->quit();
-    }
-
     void patchbay::impl::start(pw_recipe::receiver receiver, cr_recipe::sender sender)
     {
-        auto loop    = pw::main_loop::create();
-        auto context = pw::context::create(loop);
-
-        core     = context ? pw::core::create(context) : nullptr;
-        registry = core ? pw::registry::create(core) : std::nullopt;
-
-        if (!core || !registry)
+        const auto bail = [&sender]
         {
-            logger::get()->error("could not create core or registry");
             sender.send(ready{false});
-            return;
+        };
+
+        if (auto result = pw::main_loop::create())
+        {
+            loop = std::move(*result);
+        }
+        else
+        {
+            logger::get()(error, "could not create main_loop: {}", result.error().message());
+            return bail();
         }
 
-        receiver.attach(loop,
-                        [this, &sender]<typename T>(T message)
-                        {
-                            logger::get()->trace("[patchbay] (main_loop) received message: {}", glz::type_name<T>);
-                            receive(sender, message);
-                        });
+        auto context = pw::context::create(loop);
+
+        if (!context)
+        {
+            logger::get()(error, "could not create context: {}", context.error().message());
+            return bail();
+        }
+
+        if (auto result = pw::core::create(*context))
+        {
+            core = std::move(*result);
+        }
+        else
+        {
+            logger::get()(error, "could not create core: {}", result.error().message());
+            return bail();
+        }
+
+        if (auto result = pw::registry::create(core))
+        {
+            registry = std::move(*result);
+        }
+        else
+        {
+            logger::get()(error, "could not create registry: {}", result.error().message());
+            return bail();
+        }
+
+        const auto callback = [this, &sender]<typename T>(T message)
+        {
+            logger::get()(trace, "[patchbay] received message {}", glz::type_name<T>);
+            logger::get()(trace, "[patchbay] └ with content: {}", glz::write_json(message).value_or(""));
+            receive(sender, std::move(message));
+        };
+        receiver.attach(loop, callback);
 
         auto listener = registry->listen();
 
-        listener.on<pw::registry_event::global_removed>([this](std::uint32_t id) { del_global(id); });
-        listener.on<pw::registry_event::global>([this](auto global) { add_global(global); });
+        listener.on<pw::registry_event::global>(std::bind_front(&impl::add_global, this));
+        listener.on<pw::registry_event::global_removed>(std::bind_front(&impl::del_global, this));
 
-        auto future   = core->update();
-        update_source = future.stop_source();
+        sender.send(ready{true});
+        loop->run();
 
-        auto success = future.get();
-        sender.send(ready{success.value_or(false)});
-
-        while (!should_exit)
-        {
-            loop->run();
-        }
-
-        cleanup(true);
-
-        core->update();
         sender.send(quit{});
-
-        logger::get()->trace("[patchbay] (main_loop) finished");
     }
 } // namespace vencord

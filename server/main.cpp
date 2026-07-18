@@ -8,10 +8,16 @@
 
 int main(int argc, char **args)
 {
+    using enum vencord::logger::level;
+
     using vencord::logger;
     using vencord::patchbay;
 
-    auto port = 7591;
+    logger::get()(warn, "DISCLAIMER: This program is not intended for standalone usage. You need a modified discord "
+                        "client that makes use of this!");
+
+    auto port   = 7591;
+    auto server = httplib::Server{};
 
     if (argc > 1)
     {
@@ -21,20 +27,13 @@ int main(int argc, char **args)
         }
         catch (...)
         {
-            logger::get()->error("Bad arguments, usage: {} [port]", args[0]);
+            logger::get()(error, "Bad arguments, usage: {} [port]", args[0]);
             return 1;
         }
     }
 
-    logger::get()->warn("DISCLAIMER: This program is not intended for standalone usage. You need a modified discord "
-                        "client that makes use of this!");
-
-    logger::get()->info("Running on port: {}", port);
-
-    httplib::Server server;
-
     server.set_exception_handler(
-        [&](const auto &, auto &, auto exception)
+        [&](auto &&, auto &&, auto &&exception)
         {
             try
             {
@@ -42,11 +41,11 @@ int main(int argc, char **args)
             }
             catch (const std::exception &ex)
             {
-                logger::get()->error("Encountered error: {}", ex.what());
+                logger::get()(error, "Encountered error: {}", ex.what());
             }
             catch (...)
             {
-                logger::get()->error("Encountered error: <Unknown>");
+                logger::get()(error, "Encountered error: <Unknown>");
             }
 
             server.stop();
@@ -55,37 +54,45 @@ int main(int argc, char **args)
     server.Post("/list",
                 [](const auto &req, auto &response)
                 {
-                    auto props = glz::read_json<std::vector<std::string>>(req.body);
-                    auto data  = glz::write_json(patchbay::get().list(props.value_or(std::vector<std::string>{})));
+                    const auto props   = glz::read_json<std::vector<std::string>>(req.body);
+                    const auto results = patchbay::get().list(props.value_or(std::vector<std::string>{}));
 
-                    response.set_content(data, "application/json");
+                    if (const auto data = glz::write_json(results); data.has_value())
+                    {
+                        response.set_content(*data, "application/json");
+                        response.status = 200;
+                        return;
+                    }
+
+                    response.status = 500;
                 });
 
     server.Post("/link",
                 [](const auto &req, auto &response)
                 {
-                    vencord::link_options parsed;
+                    auto parsed = vencord::link_options{};
 
-                    const auto error = glz::read_json(parsed, req.body);
-
-                    if (error)
+                    if (const auto error = glz::read_json(parsed, req.body); !error)
                     {
-                        response.status = 418;
+                        patchbay::get().link(std::move(parsed));
+                        response.status = 200;
                         return;
                     }
 
-                    patchbay::get().link(std::move(parsed));
-
-                    response.status = 200;
+                    response.status = 418;
                 });
 
     server.Get("/has-pipewire-pulse",
                [](const auto &, auto &response)
                {
-                   auto data = glz::write_json(patchbay::has_pipewire());
+                   if (const auto data = glz::write_json(patchbay::has_pipewire()); data.has_value())
+                   {
+                       response.set_content(*data, "application/json");
+                       response.status = 200;
+                       return;
+                   }
 
-                   response.set_content(data, "application/json");
-                   response.status = 200;
+                   response.status = 500;
                });
 
     server.Get("/unlink",
@@ -95,6 +102,7 @@ int main(int argc, char **args)
                    response.status = 200;
                });
 
+    logger::get()("Running on port: {}", port);
     server.listen("0.0.0.0", port);
 
     return 0;

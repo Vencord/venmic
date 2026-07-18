@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 6.1.0)
+project(venmic LANGUAGES CXX VERSION 7.0.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -14,11 +14,11 @@ option(venmic_prefer_remote "Prefer remote packages over local packages" ON)
 # --------------------------------------------------------------------------------------------------------
 
 if (venmic_addon)
-  set(venmic_server OFF)
+    set(venmic_server OFF)
 endif()
 
 if (venmic_server)
-  set(venmic_addon OFF)
+    set(venmic_addon OFF)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -44,17 +44,17 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(${PROJECT_NAME})
 add_library(vencord::venmic ALIAS ${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 23 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
 if (PROJECT_IS_TOP_LEVEL)
-  target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=vc::)
+    target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=vc::)
 else()
-  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-unknown-attributes)
+    target_compile_options(${PROJECT_NAME} PUBLIC -Wno-unknown-attributes)
 endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-missing-field-initializers -Wno-cast-function-type)
@@ -87,41 +87,29 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        7.0
+  VERSION        11.1.0
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 
 CPMFindPackage(
-  NAME           tl-expected
-  VERSION        1.1.0
-  GIT_REPOSITORY "https://github.com/TartanLlama/expected"
-)
-
-CPMFindPackage(
   NAME           channel
-  VERSION        2.3
+  VERSION        4.0.0
   GIT_REPOSITORY "https://github.com/Curve/channel"
 )
 
 CPMFindPackage(
-  NAME           range-v3
-  GIT_TAG        0.12.0
-  GIT_REPOSITORY "https://github.com/ericniebler/range-v3"
-)
-
-CPMFindPackage(
   NAME           glaze
-  VERSION        2.6.8
+  VERSION        7.9.1
   GIT_REPOSITORY "https://github.com/stephenberry/glaze"
 )
 
 CPMFindPackage(
   NAME           spdlog
-  VERSION        1.14.1
+  VERSION        1.17.0
   GIT_REPOSITORY "https://github.com/gabime/spdlog"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC cr::rohrkabel tl::expected cr::channel glaze::glaze range-v3::meta spdlog::spdlog)
+target_link_libraries(${PROJECT_NAME} PUBLIC cr::rohrkabel cr::channel glaze::glaze spdlog::spdlog)
 
 # --------------------------------------------------------------------------------------------------------
 # Custom Find-Package configurations
@@ -141,7 +129,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC PulseAudio::PulseAudio)
 # --------------------------------------------------------------------------------------------------------
 
 if (venmic_server)
-  add_subdirectory(server)
+    add_subdirectory(server)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -149,9 +137,9 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 if (venmic_addon AND NOT CMAKE_JS_VERSION)
-  message(FATAL_ERROR "[venmic] Please build the addon using CMake.js")
+    message(FATAL_ERROR "[venmic] Please build the addon using cmake-js")
 endif()
 
 if (venmic_addon)
-  add_subdirectory(addon)
+    add_subdirectory(addon)
 endif()

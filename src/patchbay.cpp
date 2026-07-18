@@ -9,9 +9,11 @@
 
 namespace vencord
 {
-    patchbay::~patchbay() = default;
+    using enum logger::level;
 
     patchbay::patchbay() : m_impl(std::make_unique<impl>()) {}
+
+    patchbay::~patchbay() = default;
 
     void patchbay::link(link_options options)
     {
@@ -26,7 +28,7 @@ namespace vencord
     std::vector<node> patchbay::list(std::vector<std::string> props)
     {
         m_impl->sender->send(list_nodes{std::move(props)});
-        return m_impl->receiver->recv_as<std::vector<node>>();
+        return *m_impl->receiver->recv_as<std::vector<node>>();
     }
 
     patchbay &patchbay::get()
@@ -35,13 +37,15 @@ namespace vencord
 
         if (!instance && !has_pipewire())
         {
-            logger::get()->warn("[patchbay] (get) pipewire was not detected as main audio server");
+            logger::get()(warn, "[patchbay] (get) pipewire was not detected as main audio server");
+            logger::get()(warn, "[patchbay] (get) └ this could result in programs not being picked up properly");
+            logger::get()(warn, "[patchbay] (get)   └ should this be the case, please migrate to pipewire!");
         }
 
         if (!instance)
         {
             instance = std::unique_ptr<patchbay>(new patchbay);
-            logger::get()->info("[patchbay] (get) running venmic {}", VENMIC_VERSION);
+            logger::get()("[patchbay] (get) running venmic {}", VENMIC_VERSION);
         }
 
         return *instance;
@@ -53,14 +57,14 @@ namespace vencord
 
         if (cached)
         {
-            logger::get()->trace("[patchbay] (has_pipewire) using cached result");
+            logger::get()(trace, "[patchbay] (has_pipewire) using cached result");
             return cached.value();
         }
 
         auto *loop    = pa_mainloop_new();
         auto *context = pa_context_new(pa_mainloop_get_api(loop), "venmic-pulse-info");
 
-        struct state
+        struct userdata
         {
             pa_mainloop *loop;
             std::promise<std::string> result;
@@ -68,35 +72,33 @@ namespace vencord
 
         static auto info = [](pa_context *, const pa_server_info *info, void *data)
         {
-            auto &[loop, result] = *reinterpret_cast<state *>(data);
-
+            auto &[loop, result] = *reinterpret_cast<userdata *>(data);
             result.set_value(info->server_name);
             pa_mainloop_quit(loop, 0);
         };
 
         static auto notify = [](pa_context *context, void *data)
         {
-            auto &[loop, result] = *reinterpret_cast<struct state *>(data);
-            auto state           = pa_context_get_state(context);
+            auto &[loop, result] = *reinterpret_cast<userdata *>(data);
+            const auto state     = pa_context_get_state(context);
 
-            if (state == PA_CONTEXT_FAILED)
+            if (state == PA_CONTEXT_READY)
             {
-                logger::get()->error("[patchbay] (has_pipewire) failed to connect pulse context");
-                pa_mainloop_quit(loop, 0);
-
+                pa_context_get_server_info(context, info, data);
                 return;
             }
 
-            if (state != PA_CONTEXT_READY)
+            if (state != PA_CONTEXT_FAILED)
             {
                 return;
             }
 
-            pa_context_get_server_info(context, info, data);
+            logger::get()(error, "[patchbay] (has_pipewire) failed to connect pulse context");
+            pa_mainloop_quit(loop, 0);
         };
 
-        state state{loop};
-        pa_context_set_state_callback(context, notify, &state);
+        auto data = userdata{.loop = loop};
+        pa_context_set_state_callback(context, notify, &data);
 
         if (pa_context_connect(context, nullptr, PA_CONTEXT_NOFLAGS, nullptr) >= 0)
         {
@@ -106,19 +108,20 @@ namespace vencord
         pa_context_disconnect(context);
         pa_mainloop_free(loop);
 
-        auto result = state.result.get_future();
+        auto result = data.result.get_future();
 
         if (result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         {
-            logger::get()->error("[patchbay] (has_pipewire) result timed out");
+            logger::get()(error, "[patchbay] (has_pipewire) result timed out");
             return false;
         }
 
-        auto name = result.get();
-        std::transform(name.begin(), name.end(), name.begin(), [](char c) { return std::tolower(c); });
+        const auto name = result.get()                                                    //
+                          | std::views::transform([](char c) { return std::tolower(c); }) //
+                          | std::ranges::to<std::string>();
 
-        logger::get()->debug("[patchbay] (has_pipewire) pulse-server is \"{}\"", name);
+        logger::get()(debug, "[patchbay] (has_pipewire) pulse-server is \"{}\"", name);
 
-        return cached.emplace(name.find("pipewire") != std::string::npos);
+        return cached.emplace(name.contains("pipewire"));
     }
 } // namespace vencord

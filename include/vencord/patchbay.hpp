@@ -1,9 +1,10 @@
 #pragma once
 
-#include <map>
-#include <vector>
 #include <memory>
 #include <string>
+
+#include <map>
+#include <vector>
 
 namespace vencord
 {
@@ -15,27 +16,29 @@ namespace vencord
         std::vector<node> exclude;
 
       public:
-        bool ignore_devices{true}; // Only link against non-device nodes
-      public:
+        bool ignore_devices{true};        // Only link against non-device nodes
+                                          //
+      public:                             //
         bool only_speakers{true};         // Ignore nodes that don't play to speakers
         bool only_default_speakers{true}; // Ignore nodes that don't play to the default speaker
-
-      public:
-        std::vector<node> workaround;
+                                          //
+      public:                             //
+        bool legacy_workaround{false};    // Use non metadata workaround (for use with old pipewire versions)
+        std::vector<node> workaround;     // Nodes given here will automatically be linked to the venmic node
     };
 
-    class patchbay
+    struct patchbay
     {
         class impl;
 
       private:
         std::unique_ptr<impl> m_impl;
 
-      public:
-        ~patchbay();
-
       private:
         patchbay();
+
+      public:
+        ~patchbay();
 
       public:
         void link(link_options options);

@@ -3,14 +3,14 @@
 #include "patchbay.hpp"
 
 #include <string>
+#include <vector>
 
-#include <cr/channel.hpp>
 #include <rohrkabel/channel/channel.hpp>
-
-namespace pw = pipewire;
 
 namespace vencord
 {
+    namespace pw = pipewire;
+
     struct list_nodes
     {
         std::vector<std::string> props;
@@ -24,15 +24,11 @@ namespace vencord
     {
     };
 
-    struct abort
-    {
-    };
-
     struct ready
     {
         bool success{true};
     };
 
-    using pw_recipe = pw::recipe<list_nodes, link_options, unset_target, quit, abort>;
+    using pw_recipe = pw::recipe<list_nodes, link_options, unset_target, quit>;
     using cr_recipe = cr::recipe<std::vector<node>, ready, quit>;
 } // namespace vencord
