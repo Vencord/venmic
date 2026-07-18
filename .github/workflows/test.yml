@@ -17,12 +17,12 @@ jobs:
         run: "pacman --noconfirm -Syu base-devel cmake gcc git make pipewire pipewire-pulse"
 
       - name: 🍃 Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: 🍃 Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v2
         with:
           version: 8
           run_install: false
@@ -31,15 +31,4 @@ jobs:
         run: "pnpm install"
 
       - name: 🧪 Test
-        run: |
-          mkdir -p /run/user/$(id -u)
-          export XDG_RUNTIME_DIR=/run/user/$(id -u)
-
-          dbus-daemon --session --address=unix:path=$XDG_RUNTIME_DIR/bus --nofork --nopidfile --syslog-only &
-          export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
-
-          pipewire &
-          wireplumber &
-
-          sleep 2
-          pnpm run test
+        run: "pnpm run test"
