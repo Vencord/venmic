@@ -26,6 +26,7 @@ jobs:
         with:
           version: 8
           run_install: false
+          dest: /tmp/setup-pnpm
 
       - name: 🔨 Build
         run: "pnpm install"
