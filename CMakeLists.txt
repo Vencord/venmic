@@ -47,7 +47,7 @@ add_library(vencord::venmic ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 23 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
-if (PROJECT_IS_TOP_LEVEL)
+if (PROJECT_IS_TOP_LEVEL AND NOT CMAKE_JS_VERSION)
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
 endif()
 
