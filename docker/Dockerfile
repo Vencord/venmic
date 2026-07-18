@@ -1,6 +1,6 @@
 # This Dockerfile describes the base image used for compiling the node addon on different CPU-Architectures
 
-FROM fedora:38
+FROM fedora:42
 
 # Build dependencies
 
