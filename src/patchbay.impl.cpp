@@ -228,7 +228,7 @@ namespace vencord
             return true;
         }
 
-        if (!default_speaker || !default_speaker->id)
+        if (!default_speaker.has_value() || !default_speaker->id.has_value())
         {
             return false;
         }

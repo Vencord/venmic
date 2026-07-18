@@ -29,7 +29,7 @@ namespace vencord
 
     struct patchbay
     {
-        class impl;
+        struct impl;
 
       private:
         std::unique_ptr<impl> m_impl;

@@ -42,11 +42,8 @@ namespace vencord
         with_mic    = 1,
     };
 
-    class patchbay::impl
+    struct patchbay::impl
     {
-        std::jthread worker;
-
-      public:
         std::unique_ptr<pw_recipe::sender> sender;
         std::unique_ptr<cr_recipe::receiver> receiver;
 
@@ -71,6 +68,9 @@ namespace vencord
         std::unordered_map<std::uint32_t, pw::node_info> nodes;
         std::unordered_map<std::uint32_t, pw::port_info> ports;
         std::unordered_map<std::uint32_t, pw::link_info> links;
+
+      private:
+        std::jthread worker;
 
       public:
         impl();
