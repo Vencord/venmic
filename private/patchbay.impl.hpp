@@ -22,8 +22,6 @@
 
 namespace vencord
 {
-    using link_mapping = std::pair<std::uint32_t, std::uint32_t>;
-
     struct speaker
     {
         std::string name;
@@ -49,6 +47,7 @@ namespace vencord
 
       private:
         std::shared_ptr<pw::main_loop> loop;
+        std::shared_ptr<pw::context> context;
         std::shared_ptr<pw::core> core;
         std::optional<pw::registry> registry;
 
@@ -62,7 +61,7 @@ namespace vencord
 
       private:
         std::optional<pw::node> virt_mic;
-        std::unordered_map<std::uint32_t, std::map<link_mapping, pw::link>> virt_links;
+        std::unordered_map<std::uint32_t, pw::impl::module> virt_redirections;
 
       private:
         std::unordered_map<std::uint32_t, pw::node_info> nodes;
@@ -87,7 +86,7 @@ namespace vencord
 
       private:
         bool should_link(const pw::node_info &);
-        coco::task<void> link(pw::node_info, pw::node_info);
+        void link(const pw::node_info &, const pw::node_info &);
 
       private:
         std::map<std::uint32_t, pw::port_info> ports_of(const pw::node_info &);

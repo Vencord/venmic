@@ -39,8 +39,7 @@ namespace vencord
 
     void patchbay::impl::cleanup(clean kind)
     {
-        virt_links.clear();
-        workaround_target.reset();
+        virt_redirections.clear();
 
         if (kind != clean::with_mic)
         {
@@ -52,7 +51,8 @@ namespace vencord
 
     coco::task<void> patchbay::impl::create_mic()
     {
-        auto node = co_await core->create(pw::null_sink_factory{
+        auto node = co_await core->create(pw::null_factory{
+            .type      = pw::null_factory::kind::sink,
             .name      = "vencord-screen-share",
             .positions = {"FL", "FR"},
         });
@@ -136,8 +136,8 @@ namespace vencord
 
         if (options.legacy_workaround)
         {
-            workaround_target = make(info->id, [this](auto id) { virt_links.erase(id); });
-            co_return co_await link(virt_mic->info(), *info);
+            workaround_target = make(info->id, [this](auto id) { virt_redirections.erase(id); });
+            co_return link(virt_mic->info(), *info);
         }
 
         const auto serial  = virt_mic->info().props.at("object.serial");
@@ -148,14 +148,14 @@ namespace vencord
                 return;
             }
 
+            meta->value.clear_property(id, "node.target");
             meta->value.clear_property(id, "target.object");
-            meta->value.clear_property(id, "target.node");
         };
 
         workaround_target.reset();
         {
+            meta->value.set_property(info->id, "node.target", "Spa:Id", std::format("{}", virt_mic->id()));
             meta->value.set_property(info->id, "target.object", "Spa:Id", serial);
-            meta->value.set_property(info->id, "target.node", "Spa:Id", std::format("{}", virt_mic->id()));
         }
         workaround_target = make(info->id, cleanup);
     }
@@ -236,90 +236,40 @@ namespace vencord
         return std::ranges::contains(targets, default_speaker->id, [](auto &&item) { return item.id; });
     }
 
-    coco::task<void> patchbay::impl::link(pw::node_info from, pw::node_info to)
+    void patchbay::impl::link(const pw::node_info &from, const pw::node_info &to)
     {
-        const auto is_input = [](const auto &item)
+        if (virt_redirections.contains(from.id))
         {
-            return item.second.direction == pw::port_direction::input;
-        };
-
-        const auto is_output = [](const auto &item)
-        {
-            return item.second.direction == pw::port_direction::output;
-        };
-
-        const auto from_ports = ports_of(from);
-        const auto outputs    = from_ports | std::views::filter(is_output) | std::ranges::to<std::map>();
-        const auto mono       = outputs.size() == 1;
-
-        const auto to_ports = ports_of(to);
-        const auto inputs   = to_ports | std::views::filter(is_input) | std::ranges::to<std::map>();
-
-        const auto pred = [mono](const pw::port_info &source, const auto &target)
-        {
-            if (mono)
-            {
-                return true;
-            }
-
-            auto source_props = source.props;
-            auto target_props = target.props;
-
-            const auto source_channel = source_props["audio.channel"];
-            const auto target_channel = target_props["audio.channel"];
-
-            if (source_channel == "UNK" || target_channel == "UNK")
-            {
-                return source_props["port.id"] == target_props["port.id"];
-            }
-
-            return source_channel == target_channel;
-        };
-
-        const auto transform = [](const auto &source, const auto &target)
-        {
-            return std::make_pair(source.id, target.id);
-        };
-
-        auto mapping = std::vector<link_mapping>{};
-        auto &links  = virt_links[to.id];
-
-        for (const auto &[source_id, source_port] : outputs)
-        {
-            std::ranges::move(inputs                                                               //
-                                  | std::views::values                                             //
-                                  | std::views::filter(std::bind_front(pred, source_port))         //
-                                  | std::views::transform(std::bind_front(transform, source_port)) //
-                                  | std::ranges::to<std::vector>(),
-                              std::back_inserter(mapping));
+            virt_redirections.erase(from.id);
         }
 
-        if (mapping.empty())
+        const auto capture  = std::format("venmic-capture-{}-{}", from.id, to.id);
+        const auto playback = std::format("venmic-playback-{}-{}", from.id, to.id);
+
+        auto loopback = context->load(pw::loopback_options{
+            .capture =
+                {
+                    .name       = capture,
+                    .descrption = capture,
+                    .node       = from.id,
+                },
+            .playback =
+                {
+                    .name       = playback,
+                    .descrption = playback,
+                    .node       = to.id,
+                },
+        });
+
+        if (!loopback.has_value())
         {
-            co_return logger::get()(warn, "[patchbay] (link) could not determine mapping for: {} -> {}", from.id, to.id);
+            return logger::get()(warn, "[patchbay] (link) failed to create loopback ({} -> {}): {}", from.id, to.id,
+                                 loopback.error().message());
         }
 
-        for (const auto &pair : mapping)
-        {
-            links.erase(pair);
+        virt_redirections.emplace(from.id, std::move(*loopback));
 
-            auto [source, target] = pair;
-            auto link             = co_await core->create(pw::link_factory{
-                .input  = target,
-                .output = source,
-            });
-
-            if (!link.has_value())
-            {
-                logger::get()(warn, "[patchbay] (link) failed to create link ({} -> {}): {}", source, target,
-                              link.error().message);
-                continue;
-            }
-
-            links.emplace(pair, std::move(*link));
-        }
-
-        logger::get()("[patchbay] (link) created links: {}", mapping);
+        logger::get()(info, "[patchbay] (link) created loopback {} -> {}", from.id, to.id);
     }
 
     std::map<std::uint32_t, pw::port_info> patchbay::impl::ports_of(const pw::node_info &info)
@@ -368,7 +318,7 @@ namespace vencord
 
         if (virt_mic.has_value() && should_link(info))
         {
-            co_await link(info, virt_mic->info());
+            link(info, virt_mic->info());
         }
 
         co_await redirect(info);
@@ -404,7 +354,7 @@ namespace vencord
 
         if (virt_mic.has_value() && should_link(node->second))
         {
-            co_await link(node->second, virt_mic->info());
+            link(node->second, virt_mic->info());
         }
 
         co_await redirect(node->second);
@@ -431,19 +381,19 @@ namespace vencord
             co_return;
         }
 
-        if (virt_links.contains(from) || virt_links.contains(to))
+        if (virt_redirections.contains(from) || virt_redirections.contains(to))
         {
             co_return;
         }
 
         if (const auto it = nodes.find(from); it != nodes.end() && should_link(it->second))
         {
-            co_await this->link(it->second, virt_mic->info());
+            this->link(it->second, virt_mic->info());
         }
 
         if (const auto it = nodes.find(to); it != nodes.end() && should_link(it->second))
         {
-            co_await this->link(it->second, virt_mic->info());
+            this->link(it->second, virt_mic->info());
         }
 
         logger::get()(trace, "[patchbay] (handle) refreshed nodes ({} -> {}) attched to {}", from, to, id);
@@ -561,7 +511,7 @@ namespace vencord
 
     void patchbay::impl::del_global(std::uint32_t id)
     {
-        virt_links.erase(id);
+        virt_redirections.erase(id);
 
         nodes.erase(id);
         ports.erase(id);
@@ -596,7 +546,7 @@ namespace vencord
 
         for (const auto &node : targets)
         {
-            co_await link(node, virt_mic->info());
+            link(node, virt_mic->info());
         }
 
         co_await redirect();
@@ -678,15 +628,17 @@ namespace vencord
             return bail();
         }
 
-        auto context = pw::context::create(loop);
-
-        if (!context)
+        if (auto result = pw::context::create(loop))
         {
-            logger::get()(error, "could not create context: {}", context.error().message());
+            context = std::move(*result);
+        }
+        else
+        {
+            logger::get()(error, "could not create context: {}", result.error().message());
             return bail();
         }
 
-        if (auto result = pw::core::create(*context))
+        if (auto result = pw::core::create(context))
         {
             core = std::move(*result);
         }
