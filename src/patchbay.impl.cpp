@@ -39,7 +39,7 @@ namespace vencord
 
     void patchbay::impl::cleanup(clean kind)
     {
-        virt_redirections.clear();
+        virt_links.clear();
 
         if (kind != clean::with_mic)
         {
@@ -136,7 +136,7 @@ namespace vencord
 
         if (options.legacy_workaround)
         {
-            workaround_target = make(info->id, [this](auto id) { virt_redirections.erase(id); });
+            workaround_target = make(info->id, [this](auto id) { virt_links.erase(id); });
             co_return link(virt_mic->info(), *info);
         }
 
@@ -238,9 +238,9 @@ namespace vencord
 
     void patchbay::impl::link(const pw::node_info &from, const pw::node_info &to)
     {
-        if (virt_redirections.contains(from.id))
+        if (virt_links.contains(from.id))
         {
-            virt_redirections.erase(from.id);
+            virt_links.erase(from.id);
         }
 
         const auto capture  = std::format("venmic-capture-{}-{}", from.id, to.id);
@@ -267,7 +267,7 @@ namespace vencord
                                  loopback.error().message());
         }
 
-        virt_redirections.emplace(from.id, std::move(*loopback));
+        virt_links.emplace(from.id, std::move(*loopback));
 
         logger::get()(info, "[patchbay] (link) created loopback {} -> {}", from.id, to.id);
     }
@@ -381,7 +381,7 @@ namespace vencord
             co_return;
         }
 
-        if (virt_redirections.contains(from) || virt_redirections.contains(to))
+        if (virt_links.contains(from) || virt_links.contains(to))
         {
             co_return;
         }
@@ -511,7 +511,7 @@ namespace vencord
 
     void patchbay::impl::del_global(std::uint32_t id)
     {
-        virt_redirections.erase(id);
+        virt_links.erase(id);
 
         nodes.erase(id);
         ports.erase(id);
