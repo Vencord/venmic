@@ -43,29 +43,28 @@ namespace vencord
         m_impl->logger->flush_on(spdlog::level::trace);
 
         const auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
-        stdout_sink->set_level(spdlog::level::info);
+        const auto *level      = std::getenv("VENMIC_LOG_LEVEL"); // NOLINT(*-mt-unsafe)
+        const auto log_level   = level ? static_cast<spdlog::level::level_enum>(level[0] - '0') : spdlog::level::info;
 
+        stdout_sink->set_level(log_level);
         m_impl->logger->sinks().emplace_back(stdout_sink);
 
-        // NOLINTNEXTLINE(*-mt-unsafe)
-        if (!std::getenv("VENMIC_ENABLE_LOG"))
+        if (!std::getenv("VENMIC_ENABLE_LOG")) // NOLINT(*-mt-unsafe)
         {
             return;
         }
 
-        const auto directory = log_directory();
+        const auto directory     = log_directory();
+        [[maybe_unused]] auto ec = std::error_code{};
 
-        if (!fs::exists(directory))
+        if (!fs::exists(directory, ec))
         {
-            [[maybe_unused]] std::error_code ec;
             fs::create_directories(directory, ec);
         }
 
         const auto file_sink = std::make_shared<sinks::basic_file_sink_mt>((directory / "venmic.log").string());
 
         file_sink->set_level(spdlog::level::trace);
-        stdout_sink->set_level(spdlog::level::trace);
-
         m_impl->logger->sinks().emplace_back(file_sink);
     }
 
