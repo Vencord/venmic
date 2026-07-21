@@ -605,13 +605,10 @@ namespace vencord
     {
         using clock = std::chrono::system_clock;
 
-        static const auto required = std::vector<std::string>{"application.name", "node.name"};
-        const auto &props          = req.props.empty() ? required : req.props;
-
-        const auto desireable = [&props](const auto &item)
+        const auto desireable = [&req](const auto &item)
         {
             auto other = item.second.props;
-            return std::ranges::all_of(props, [&](const auto &key) { return !other[key].empty(); });
+            return std::ranges::all_of(req.props, [&](const auto &key) { return !other[key].empty(); });
         };
 
         const auto can_output = [](const auto &item)
@@ -619,7 +616,7 @@ namespace vencord
             return item.second.output.max > 0;
         };
 
-        logger::get()(debug, "[patchbay] (receive) listing nodes ({})", props);
+        logger::get()(debug, "[patchbay] (receive) listing nodes ({})", req.props);
 
         for (const auto start = clock::now(); clock::now() - start < 500ms && nodes.empty();)
         {
