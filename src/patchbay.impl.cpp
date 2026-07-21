@@ -424,7 +424,7 @@ namespace vencord
             this->link(it->second, virt_mic->info());
         }
 
-        logger::get()(debug, "[patchbay] (handle) refreshed nodes ({} -> {}) attched to {}", from, to, id);
+        logger::get()(debug, "[patchbay] (handle) refreshed nodes ({} -> {}) attached to {}", from, to, id);
     }
 
     struct pw_metadata_name // NOLINT(*-internal-linkage)
