@@ -87,7 +87,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        12.0.0
+  VERSION        12.0.1
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
 )
 

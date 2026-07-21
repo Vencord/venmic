@@ -277,15 +277,15 @@ namespace vencord
         auto loopback = context->load(pw::loopback_options{
             .capture =
                 {
-                    .name       = capture,
-                    .descrption = capture,
-                    .node       = from.id,
+                    .name        = capture,
+                    .description = capture,
+                    .node        = from.id,
                 },
             .playback =
                 {
-                    .name       = playback,
-                    .descrption = playback,
-                    .node       = to.id,
+                    .name        = playback,
+                    .description = playback,
+                    .node        = to.id,
                 },
         });
 
