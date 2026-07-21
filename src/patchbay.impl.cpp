@@ -28,7 +28,7 @@ namespace vencord
             throw std::runtime_error{"failed to create patchbay instance"};
         }
 
-        logger::get()(trace, "[patchbay] (init) pw_receiver is ready");
+        logger::get()(debug, "[patchbay] (init) pw_receiver is ready");
     }
 
     patchbay::impl::~impl()
@@ -63,19 +63,15 @@ namespace vencord
         }
 
         const auto info = node->info();
-        auto ports      = std::map<std::uint32_t, pw::port_info>{};
 
-        while ((ports = ports_of(info)).size() < 4)
+        while (ports_of(info).size() < 4)
         {
             co_await core->sync();
         }
 
         virt_mic.emplace(std::move(*node));
 
-        const auto port_numbers = ports //
-                                  | std::views::transform([](auto &&port) { return port.first; });
-
-        logger::get()("[patchbay] (create_mic) created {} with ports: {}", virt_mic->id(), port_numbers);
+        logger::get()("[patchbay] (create_mic) created null-sink: {}", virt_mic->id());
     }
 
     static bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-anonymous-namespace)
@@ -97,11 +93,13 @@ namespace vencord
     {
         if (!meta.has_value())
         {
+            logger::get()(debug, "[patchbay] (redirect) metadata not available");
             co_return;
         }
 
         if (!virt_mic.has_value())
         {
+            logger::get()(debug, "[patchbay] (redirect) virt-mic not available");
             co_return;
         }
 
@@ -117,11 +115,13 @@ namespace vencord
         }
         else if (!pred(*info))
         {
+            logger::get()(debug, "[patchbay] (redirect) {} did not match workaround criteria", info->id);
             co_return;
         }
 
         if (!info.has_value())
         {
+            logger::get()(debug, "[patchbay] (redirect) could not find node matching redirect criteria");
             co_return;
         }
 
@@ -136,6 +136,7 @@ namespace vencord
 
         if (options.legacy_workaround)
         {
+            logger::get()(debug, "[patchbay] (redirect) using legacy workaround for {}", info->id);
             workaround_target = make(info->id, [this](auto id) { virt_links.erase(id); });
             co_return link(virt_mic->info(), *info);
         }
@@ -158,17 +159,31 @@ namespace vencord
             meta->value.set_property(info->id, "target.object", "Spa:Id", serial);
         }
         workaround_target = make(info->id, cleanup);
+
+        logger::get()(debug, "[patchbay] (redirect) redirected {}", info->id);
     }
 
     bool patchbay::impl::should_link(const pw::node_info &node)
     {
+        logger::get()(debug, "[patchbay] (should_link) checking {}", node.id);
+
+        auto props = node.props;
+
+        if (props["node.description"].starts_with("venmic-loopback"))
+        {
+            logger::get()(debug, "[patchbay] (should_link) └ is virt-mic loopback", node.id);
+            return false;
+        }
+
         if (!options.include.empty() && !matches(options.include, node.props))
         {
+            logger::get()(debug, "[patchbay] (should_link) └ did not match include criteria", node.id);
             return false;
         }
 
         if (matches(options.exclude, node.props))
         {
+            logger::get()(debug, "[patchbay] (should_link) └ matched exclude criteria", node.id);
             return false;
         }
 
@@ -176,18 +191,19 @@ namespace vencord
 
         if (ports.empty())
         {
+            logger::get()(debug, "[patchbay] (should_link) └ has no ports", node.id);
             return false;
         }
 
         if (virt_mic.has_value() && virt_mic->id() == node.id)
         {
+            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic", node.id);
             return false;
         }
 
-        auto props = node.props;
-
         if (options.ignore_devices && !props["device.id"].empty())
         {
+            logger::get()(debug, "[patchbay] (should_link) └ is a device", node.id);
             return false;
         }
 
@@ -220,20 +236,32 @@ namespace vencord
 
         if (options.only_speakers && !std::ranges::any_of(targets, is_device))
         {
+            logger::get()(debug, "[patchbay] (should_link) └ does not link to speakers", node.id);
             return false;
         }
 
-        if (!options.only_default_speakers)
-        {
-            return true;
-        }
+        const auto speakers_known = default_speaker.has_value() && default_speaker->id.has_value();
 
-        if (!default_speaker.has_value() || !default_speaker->id.has_value())
+        if (options.only_default_speakers && !speakers_known)
         {
+            logger::get()(debug, "[patchbay] (should_link) └ default speakers are unknown", node.id);
             return false;
         }
 
-        return std::ranges::contains(targets, default_speaker->id, [](auto &&item) { return item.id; });
+        const auto extract_id = [](auto &&item)
+        {
+            return item.id;
+        };
+
+        if (options.only_default_speakers && !std::ranges::contains(targets, default_speaker->id, extract_id))
+        {
+            logger::get()(debug, "[patchbay] (should_link) └ does not link to default speakers", node.id);
+            return false;
+        }
+
+        logger::get()(debug, "[patchbay] (should_link) └ accepted!");
+
+        return true;
     }
 
     void patchbay::impl::link(const pw::node_info &from, const pw::node_info &to)
@@ -243,8 +271,8 @@ namespace vencord
             virt_links.erase(from.id);
         }
 
-        const auto capture  = std::format("venmic-capture-{}-{}", from.id, to.id);
-        const auto playback = std::format("venmic-playback-{}-{}", from.id, to.id);
+        const auto capture  = std::format("venmic-loopback-capture-{}-{}", from.id, to.id);
+        const auto playback = std::format("venmic-loopback-playback-{}-{}", from.id, to.id);
 
         auto loopback = context->load(pw::loopback_options{
             .capture =
@@ -305,10 +333,10 @@ namespace vencord
         auto info     = node.info();
         auto props    = info.props;
 
-        logger::get()(trace, "[patchbay] (handle) new node: {}", id);
-        logger::get()(trace, "[patchbay] (handle) └ node.name: {}", props["node.name"]);
-        logger::get()(trace, "[patchbay] (handle) └ application.name: {}", props["application.name"]);
-        logger::get()(trace, "[patchbay] (handle) └ application.process.binary: {}", props["application.process.binary"]);
+        logger::get()(debug, "[patchbay] (handle) new node: {}", id);
+        logger::get()(debug, "[patchbay] (handle) └ node.name: {}", props["node.name"]);
+        logger::get()(debug, "[patchbay] (handle) └ application.name: {}", props["application.name"]);
+        logger::get()(debug, "[patchbay] (handle) └ application.process.binary: {}", props["application.process.binary"]);
 
         if (default_speaker.has_value() && default_speaker->name == props["node.name"])
         {
@@ -396,7 +424,7 @@ namespace vencord
             this->link(it->second, virt_mic->info());
         }
 
-        logger::get()(trace, "[patchbay] (handle) refreshed nodes ({} -> {}) attched to {}", from, to, id);
+        logger::get()(debug, "[patchbay] (handle) refreshed nodes ({} -> {}) attched to {}", from, to, id);
     }
 
     struct pw_metadata_name // NOLINT(*-internal-linkage)
@@ -413,8 +441,8 @@ namespace vencord
         const auto id   = metadata.id();
         const auto name = props["metadata.name"];
 
-        logger::get()(trace, "[patchbay] (handle) new metadata: {}", id);
-        logger::get()(trace, "[patchbay] (handle) └ name: {}", name);
+        logger::get()(debug, "[patchbay] (handle) new metadata: {}", id);
+        logger::get()(debug, "[patchbay] (handle) └ name: {}", name);
 
         if (name != "default")
         {
@@ -573,7 +601,7 @@ namespace vencord
         static const auto required = std::vector<std::string>{"application.name", "node.name"};
         const auto &props          = req.props.empty() ? required : req.props;
 
-        logger::get()(trace, "[patchbay] (receive) listing nodes ({})", props);
+        logger::get()(debug, "[patchbay] (receive) listing nodes ({})", props);
 
         const auto desireable = [&props](const auto &item)
         {
@@ -591,7 +619,7 @@ namespace vencord
                               | std::ranges::views::filter(can_output) //
                               | std::ranges::to<std::vector>();
 
-        logger::get()(trace, "[patchbay] (receive) found {} nodes", filtered.size());
+        logger::get()(debug, "[patchbay] (receive) found {} nodes", filtered.size());
 
         auto rtn = std::vector<node>{};
 
