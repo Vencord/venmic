@@ -76,13 +76,13 @@ The Rest-Server exposes three simple endpoints
 
 * Rest-Server
     ```bash
-    git clone https://github.com/Vencord/linux-virtmic && cd linux-virtmic
+    git clone https://github.com/Vencord/venmic && cd venmic 
     cmake -B build && cmake --build build
     ```
 
 * Node-Addon
     ```bash
-    git clone https://github.com/Vencord/linux-virtmic && cd linux-virtmic
+    git clone https://github.com/Vencord/venmic && cd venmic
     pnpm install
     ```
 
