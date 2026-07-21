@@ -56,7 +56,7 @@ namespace vencord
         std::optional<speaker> default_speaker;
 
       private:
-        link_options options;
+        std::optional<link_options> options;
         std::shared_ptr<std::uint32_t> workaround_target;
 
       private:

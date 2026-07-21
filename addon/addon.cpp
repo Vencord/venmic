@@ -40,8 +40,8 @@ namespace
             return std::nullopt;
         }
 
-        auto object = value.As<Napi::Object>();
-        auto rtn    = vencord::node{};
+        const auto object = value.As<Napi::Object>();
+        auto rtn          = vencord::node{};
 
         for (const auto &[obj_key, obj_value] : object)
         {
@@ -67,14 +67,14 @@ namespace
             return std::nullopt;
         }
 
-        auto array = value.As<Napi::Array>();
-        auto rtn   = std::vector<T>{};
+        const auto array = value.As<Napi::Array>();
+        auto rtn         = std::vector<T>{};
 
         rtn.reserve(array.Length());
 
         for (auto i = 0uz; array.Length() > i; ++i)
         {
-            auto converted = convert<T>(array.Get(i));
+            const auto converted = convert<T>(array.Get(i));
 
             if (!converted.has_value())
             {
