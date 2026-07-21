@@ -59,7 +59,7 @@ jobs:
   publish:
     needs: [build]
     runs-on: ubuntu-latest
-    container: fedora:38
+    container: fedora:42
 
     steps:
       - name: 📥 Checkout
@@ -76,13 +76,12 @@ jobs:
           fi
 
       - name: 🍃 Install Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
-          registry-url: "https://registry.npmjs.org"
+          node-version: 22
 
       - name: 🍃 Install pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v2
         with:
           version: 8
           run_install: false
