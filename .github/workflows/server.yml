@@ -7,7 +7,7 @@ name: 🏗️ Build Server
 jobs:
   build-fedora:
     runs-on: ubuntu-latest
-    container: quay.io/fedora/fedora-minimal:44 
+    container: fedora:44 
 
     steps:
       - name: 📥 Checkout
