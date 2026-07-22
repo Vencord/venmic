@@ -174,7 +174,6 @@ namespace
             const auto only_speakers         = convert<bool>(data.Get("only_speakers"));
             const auto only_default_speakers = convert<bool>(data.Get("only_default_speakers"));
             const auto workaround            = to_array<vencord::node>(data.Get("workaround"));
-            const auto legacy_workaround     = convert<bool>(data.Get("legacy_workaround"));
 
             if (!include.has_value() && !exclude.has_value())
             {
@@ -191,7 +190,6 @@ namespace
                 .ignore_devices        = ignore_devices.value_or(true),
                 .only_speakers         = only_speakers.value_or(true),
                 .only_default_speakers = only_default_speakers.value_or(true),
-                .legacy_workaround     = legacy_workaround.value_or(false),
                 .workaround            = workaround.value_or(std::vector<vencord::node>{}),
             });
 
