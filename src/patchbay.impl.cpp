@@ -567,8 +567,8 @@ namespace vencord
             co_await create_mic();
         }
 
-        options.emplace(std::move(opts));
         cleanup(clean::without_mic);
+        options.emplace(std::move(opts));
 
         co_await virt_mic->sync();
 
