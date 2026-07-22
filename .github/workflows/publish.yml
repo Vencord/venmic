@@ -25,10 +25,6 @@ jobs:
       matrix:
         arch: ["arm64", "amd64"]
 
-    permissions:
-      actions: read
-      contents: read
-
     runs-on: ubuntu-latest
 
     steps:
@@ -64,8 +60,6 @@ jobs:
     needs: [build]
 
     permissions:
-      actions: read
-      contents: read
       id-token: write
 
     runs-on: ubuntu-latest
