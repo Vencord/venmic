@@ -92,7 +92,9 @@ jobs:
           run_install: false
 
       - name: 🏗️ Setup Dependencies
-        run: pnpm install --ignore-scripts
+        run: | 
+          dnf install -y libatomic
+          pnpm install --ignore-scripts
 
       - name: 📦 Download Build (amd64)
         uses: actions/download-artifact@v8
