@@ -39,7 +39,6 @@ namespace vencord
 
     void patchbay::impl::cleanup(clean kind)
     {
-        options.reset();
         virt_links.clear();
 
         if (kind != clean::with_mic)
@@ -47,6 +46,7 @@ namespace vencord
             return;
         }
 
+        options.reset();
         virt_mic.reset();
     }
 
