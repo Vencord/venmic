@@ -15,8 +15,8 @@ jobs:
 
       - name: 👷 Build Dependencies
         run: |
-          micodnf install -y make automake gcc gcc-c++ cmake git tar
-          microdnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
+          dnf install -y make automake gcc gcc-c++ cmake git tar
+          dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
 
       - name: 🔨 Build
         run: |
