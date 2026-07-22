@@ -1,15 +1,14 @@
 # This Dockerfile describes the base image used for compiling the node addon on different CPU-Architectures
 
-FROM fedora:45
+FROM quay.io/fedora/fedora-minimal:44 
 
-# Build dependencies
+# Dependencies
 
-RUN dnf install -y make automake gcc gcc-c++ kernel-devel cmake git nodejs libstdc++-static ninja-build
-RUN dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
+RUN microdnf install -y gcc gcc-c++ make cmake nodejs npm git curl ninja-build 
+RUN microdnf install -y pipewire-devel pipewire pipewire-pulseaudio pulseaudio-libs-devel
 
-# PNPM
-
-RUN curl -fsSL https://get.pnpm.io/install.sh | sh -
+RUN npm install --global pnpm
+RUN microdnf clean all
 
 # Add build script
 

@@ -7,7 +7,7 @@ name: 🏗️ Build Server
 jobs:
   build-fedora:
     runs-on: ubuntu-latest
-    container: fedora:42
+    container: quay.io/fedora/fedora-minimal:44 
 
     steps:
       - name: 📥 Checkout
@@ -15,8 +15,8 @@ jobs:
 
       - name: 👷 Build Dependencies
         run: |
-          dnf install -y make automake gcc gcc-c++ kernel-devel cmake git
-          dnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
+          micodnf install -y make automake gcc gcc-c++ cmake git
+          microdnf install -y pipewire-devel pipewire-libs pulseaudio-libs-devel pipewire-pulseaudio
 
       - name: 🔨 Build
         run: |
