@@ -34,6 +34,15 @@ namespace vencord
         pw::metadata_listener listener;
     };
 
+    struct share_node
+    {
+        pw::node loopback_receiver; // Node for Loopbacks to connect to (has to be Virtual/Sink)
+        pw::node chromium_source;   // Node for Chromium to stream from (has to be Virtual/Source)
+
+      public:
+        std::vector<pw::link> links;
+    };
+
     enum class clean : std::uint8_t
     {
         without_mic = 0,
@@ -60,7 +69,7 @@ namespace vencord
         std::shared_ptr<std::uint32_t> workaround_target;
 
       private:
-        std::optional<pw::node> virt_mic;
+        std::optional<share_node> virt_mic;
         std::unordered_map<std::uint32_t, pw::impl::module> virt_links;
 
       private:

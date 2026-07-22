@@ -23,7 +23,6 @@ export interface LinkData
     ignore_devices?: boolean;
     
     workaround?: Node[];
-    legacy_workaround?: boolean;
 }
 
 export class PatchBay

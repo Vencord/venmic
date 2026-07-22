@@ -23,7 +23,6 @@ namespace vencord
         bool only_default_speakers{true}; // Ignore nodes that don't play to the default speaker
                                           //
       public:                             //
-        bool legacy_workaround{false};    // Use non metadata workaround (for use with old pipewire versions)
         std::vector<node> workaround;     // Nodes given here will automatically be linked to the venmic node
     };
 

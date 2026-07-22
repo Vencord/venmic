@@ -52,27 +52,103 @@ namespace vencord
 
     coco::task<void> patchbay::impl::create_mic()
     {
-        auto node = co_await core->create(pw::null_factory{
+        auto receiver = co_await core->create(pw::null_factory{
             .type      = pw::null_factory::kind::sink,
-            .name      = "vencord-screen-share",
+            .name      = "vencord-screen-share-receiver",
             .positions = {"FL", "FR"},
         });
 
-        if (!node.has_value())
+        if (!receiver.has_value())
         {
-            co_return logger::get()(error, "[patchbay] (create_mic) failed to create null-sink: {}", node.error().message);
+            co_return logger::get()(error, "[patchbay] (create_mic) failed to create receiver: {}",
+                                    receiver.error().message);
         }
 
-        const auto info = node->info();
+        const auto receiver_info = receiver->info();
+        auto receiver_ports      = std::map<std::uint32_t, pw::port_info>{};
 
-        while (ports_of(info).size() < 4)
+        while ((receiver_ports = ports_of(receiver_info)).size() < 4)
         {
             co_await core->sync();
         }
 
-        virt_mic.emplace(std::move(*node));
+        auto source = co_await core->create(pw::null_factory{
+            .type      = pw::null_factory::kind::source,
+            .name      = "vencord-screen-share",
+            .positions = {"FL", "FR"},
+        });
 
-        logger::get()("[patchbay] (create_mic) created null-sink: {}", virt_mic->id());
+        if (!source.has_value())
+        {
+            co_return logger::get()(error, "[patchbay] (create_mic) failed to create source: {}", source.error().message);
+        }
+
+        const auto source_info = source->info();
+        auto source_ports      = std::map<std::uint32_t, pw::port_info>{};
+
+        while ((source_ports = ports_of(source_info)).size() < 4)
+        {
+            co_await core->sync();
+        }
+
+        static const auto is_output = [](const auto &info)
+        {
+            return info.direction == pw::port_direction::output;
+        };
+        static const auto is_input = [](const auto &info)
+        {
+            return info.direction == pw::port_direction::input;
+        };
+        static const auto matching_port = [](auto from, auto to)
+        {
+            return from.props["audio.channel"] == to.props["audio.channel"];
+        };
+
+        const auto candidates = source_ports                   //
+                                | std::views::values           //
+                                | std::views::filter(is_input) //
+                                | std::ranges::to<std::vector>();
+        const auto sources    = receiver_ports                  //
+                                | std::views::values            //
+                                | std::views::filter(is_output) //
+                                | std::ranges::to<std::vector>();
+
+        auto links = std::vector<pw::link>{};
+
+        for (const auto &port : sources)
+        {
+            const auto match = std::ranges::find_if(candidates, std::bind_front(matching_port, port));
+
+            if (match == candidates.end())
+            {
+                logger::get()(error, "[patchbay] (create_mic) could not find matching port: {}", port.id);
+                co_return;
+            }
+
+            auto link = co_await core->create(pw::link_factory{
+                .input  = match->id,
+                .output = port.id,
+            });
+
+            if (!link.has_value())
+            {
+                logger::get()(error, "[patchbay] (create_mic) could not create link ({} -> {}): {}", port.id, match->id,
+                              link.error().message);
+                co_return;
+            }
+
+            links.emplace_back(std::move(*link));
+        }
+
+        virt_mic = share_node{
+            .loopback_receiver = std::move(*receiver),
+            .chromium_source   = std::move(*source),
+            .links             = std::move(links),
+        };
+
+        logger::get()("[patchbay] (create_mic) created sharing setup");
+        logger::get()("[patchbay] (create_mic) ├ receiver: {}", virt_mic->loopback_receiver.id());
+        logger::get()("[patchbay] (create_mic) └ source: {}", virt_mic->chromium_source.id());
     }
 
     static bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-anonymous-namespace)
@@ -140,14 +216,7 @@ namespace vencord
                                                   }};
         };
 
-        if (options->legacy_workaround)
-        {
-            logger::get()(debug, "[patchbay] (redirect) using legacy workaround for {}", info->id);
-            workaround_target = make(info->id, [this](auto id) { virt_links.erase(id); });
-            co_return link(virt_mic->info(), *info);
-        }
-
-        const auto serial  = virt_mic->info().props.at("object.serial");
+        const auto serial  = virt_mic->chromium_source.info().props.at("object.serial");
         const auto cleanup = [this](auto id)
         {
             if (!meta.has_value())
@@ -161,7 +230,7 @@ namespace vencord
 
         workaround_target.reset();
         {
-            meta->value.set_property(info->id, "node.target", "Spa:Id", std::format("{}", virt_mic->id()));
+            meta->value.set_property(info->id, "node.target", "Spa:Id", std::format("{}", virt_mic->chromium_source.id()));
             meta->value.set_property(info->id, "target.object", "Spa:Id", serial);
         }
         workaround_target = make(info->id, cleanup);
@@ -206,9 +275,15 @@ namespace vencord
             return false;
         }
 
-        if (virt_mic.has_value() && virt_mic->id() == node.id)
+        if (virt_mic.has_value() && virt_mic->chromium_source.id() == node.id)
         {
-            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic", node.id);
+            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic-source", node.id);
+            return false;
+        }
+
+        if (virt_mic.has_value() && virt_mic->loopback_receiver.id() == node.id)
+        {
+            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic-receiver", node.id);
             return false;
         }
 
@@ -345,8 +420,8 @@ namespace vencord
         auto props    = info.props;
 
         logger::get()(debug, "[patchbay] (handle) new node: {}", id);
-        logger::get()(debug, "[patchbay] (handle) └ node.name: {}", props["node.name"]);
-        logger::get()(debug, "[patchbay] (handle) └ application.name: {}", props["application.name"]);
+        logger::get()(debug, "[patchbay] (handle) ├ node.name: {}", props["node.name"]);
+        logger::get()(debug, "[patchbay] (handle) ├ application.name: {}", props["application.name"]);
         logger::get()(debug, "[patchbay] (handle) └ application.process.binary: {}", props["application.process.binary"]);
 
         if (default_speaker.has_value() && default_speaker->name == props["node.name"])
@@ -357,7 +432,7 @@ namespace vencord
 
         if (virt_mic.has_value() && should_link(info))
         {
-            link(info, virt_mic->info());
+            link(info, virt_mic->loopback_receiver.info());
         }
 
         co_await redirect(info);
@@ -393,7 +468,7 @@ namespace vencord
 
         if (virt_mic.has_value() && should_link(node->second))
         {
-            link(node->second, virt_mic->info());
+            link(node->second, virt_mic->loopback_receiver.info());
         }
 
         co_await redirect(node->second);
@@ -407,7 +482,7 @@ namespace vencord
         auto props    = info.props;
 
         logger::get()(trace, "[patchbay] (handle) new link: {}", id);
-        logger::get()(trace, "[patchbay] (handle) └ from: {} (port: {})", info.output.node, info.output.port);
+        logger::get()(trace, "[patchbay] (handle) ├ from: {} (port: {})", info.output.node, info.output.port);
         logger::get()(trace, "[patchbay] (handle) └ to: {} (port: {})", info.input.node, info.input.port);
 
         const auto from = info.output.node;
@@ -427,12 +502,12 @@ namespace vencord
 
         if (const auto it = nodes.find(from); it != nodes.end() && should_link(it->second))
         {
-            this->link(it->second, virt_mic->info());
+            this->link(it->second, virt_mic->loopback_receiver.info());
         }
 
         if (const auto it = nodes.find(to); it != nodes.end() && should_link(it->second))
         {
-            this->link(it->second, virt_mic->info());
+            this->link(it->second, virt_mic->loopback_receiver.info());
         }
 
         logger::get()(debug, "[patchbay] (handle) refreshed nodes ({} -> {}) attached to {}", from, to, id);
@@ -570,7 +645,7 @@ namespace vencord
         cleanup(clean::without_mic);
         options.emplace(std::move(opts));
 
-        co_await virt_mic->sync();
+        co_await core->sync();
 
         const auto targets = nodes                                                           //
                              | std::views::values                                            //
@@ -579,7 +654,7 @@ namespace vencord
 
         for (const auto &node : targets)
         {
-            link(node, virt_mic->info());
+            link(node, virt_mic->loopback_receiver.info());
         }
 
         co_await redirect();
