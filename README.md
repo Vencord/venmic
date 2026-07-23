@@ -57,7 +57,7 @@ The Rest-Server exposes three simple endpoints
   When enabled it will prevent hardware-devices like speakers and microphones from being linked to the virtual microphone.
 
   The setting `mute` is optional and will default to `true`.  
-  When enabled it will mute the virtual microphone by default. The user is then responsible to unmute it by calling `/unmute`.  
+  When enabled the virtual microphone wll be muted by default. The user is responsible for unmuting it by calling `/unmute`.  
 
   The setting `only_speakers` is optional and will default to `true`.  
   When enabled it will prevent linking against nodes that don't play to a speaker.
