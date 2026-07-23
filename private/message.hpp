@@ -11,12 +11,16 @@ namespace vencord
 {
     namespace pw = pipewire;
 
-    struct list_nodes
+    struct list
     {
         std::vector<std::string> props;
     };
 
-    struct unset_target
+    struct unmute
+    {
+    };
+
+    struct unlink
     {
     };
 
@@ -29,6 +33,6 @@ namespace vencord
         bool success{true};
     };
 
-    using pw_recipe = pw::recipe<list_nodes, link_options, unset_target, quit>;
+    using pw_recipe = pw::recipe<list, link_options, unlink, unmute, quit>;
     using cr_recipe = cr::recipe<std::vector<node>, ready, quit>;
 } // namespace vencord

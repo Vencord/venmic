@@ -22,12 +22,17 @@ namespace vencord
 
     void patchbay::unlink()
     {
-        m_impl->sender->send(unset_target{});
+        m_impl->sender->send(vencord::unlink{});
+    }
+
+    void patchbay::unmute()
+    {
+        m_impl->sender->send(vencord::unmute{});
     }
 
     std::vector<node> patchbay::list(std::vector<std::string> props)
     {
-        m_impl->sender->send(list_nodes{std::move(props)});
+        m_impl->sender->send(vencord::list{std::move(props)});
         return *m_impl->receiver->recv_as<std::vector<node>>();
     }
 

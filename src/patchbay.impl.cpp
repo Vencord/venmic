@@ -4,6 +4,8 @@
 #include <string_view>
 
 #include <rohrkabel/device/device.hpp>
+#include <rohrkabel/spa/pod/builder.hpp>
+
 #include <rohrkabel/registry/events.hpp>
 #include <rohrkabel/registry/registry.hpp>
 
@@ -40,6 +42,7 @@ namespace vencord
     void patchbay::impl::cleanup(clean kind)
     {
         virt_links.clear();
+        workaround_target.reset();
 
         if (kind != clean::with_mic)
         {
@@ -50,11 +53,11 @@ namespace vencord
         virt_mic.reset();
     }
 
-    coco::task<void> patchbay::impl::create_mic()
+    coco::task<void> patchbay::impl::create_mic(bool should_mute)
     {
         auto receiver = co_await core->create(pw::null_factory{
             .type      = pw::null_factory::kind::sink,
-            .name      = "vencord-screen-share-receiver",
+            .name      = "vencord-sink",
             .positions = {"FL", "FR"},
         });
 
@@ -70,6 +73,11 @@ namespace vencord
         while ((receiver_ports = ports_of(receiver_info)).size() < 4)
         {
             co_await core->sync();
+        }
+
+        if (should_mute)
+        {
+            co_await mute(receiver_info, true);
         }
 
         auto source = co_await core->create(pw::null_factory{
@@ -149,6 +157,36 @@ namespace vencord
         logger::get()("[patchbay] (create_mic) created sharing setup");
         logger::get()("[patchbay] (create_mic) ├ receiver: {}", virt_mic->loopback_receiver.id());
         logger::get()("[patchbay] (create_mic) └ source: {}", virt_mic->chromium_source.id());
+    }
+
+    coco::task<void> patchbay::impl::mute(pw::node_info info, bool value)
+    {
+        auto node = co_await registry->bind<pw::node>(info.id);
+
+        if (!node.has_value())
+        {
+            co_return logger::get()(error, "[patchbay] (mute) failed to bind {}: {}", info.id, node.error().message);
+        }
+
+        auto builder = pw::spa::pod_builder::create();
+        {
+            builder.push_object(pw::spa::type::object_props, pw::spa::param::props);
+            builder.prop(pw::spa::prop::mute);
+            builder.write(value);
+            builder.prop(pw::spa::prop::monitor_mute);
+            builder.write(value);
+        }
+        auto pod = builder.pop();
+
+        if (!pod.has_value())
+        {
+            co_return logger::get()(error, "[patchbay] (mute) failed to build pod");
+        }
+
+        node->set_param(pw::spa::param::props, 0, *pod);
+        co_await core->sync();
+
+        logger::get()(debug, "[patchbay] (mute) {} {}", value ? "muted" : "unmuted", info.id);
     }
 
     static bool matches(const std::vector<node> &targets, pw::spa::dict props) // NOLINT(*-anonymous-namespace)
@@ -635,11 +673,11 @@ namespace vencord
     }
 
     template <>
-    coco::stray patchbay::impl::receive(cr_recipe::sender, link_options opts)
+    coco::stray patchbay::impl::receive(cr_recipe::sender, vencord::link_options opts)
     {
         if (!virt_mic.has_value())
         {
-            co_await create_mic();
+            co_await create_mic(opts.mute);
         }
 
         cleanup(clean::without_mic);
@@ -661,9 +699,20 @@ namespace vencord
     }
 
     template <>
-    coco::stray patchbay::impl::receive(cr_recipe::sender, unset_target)
+    coco::stray patchbay::impl::receive(cr_recipe::sender, vencord::unlink)
     {
         co_return cleanup(clean::with_mic);
+    }
+
+    template <>
+    coco::stray patchbay::impl::receive(cr_recipe::sender, vencord::unmute)
+    {
+        if (!virt_mic.has_value())
+        {
+            co_return;
+        }
+
+        co_await mute(virt_mic->loopback_receiver.info(), false);
     }
 
     template <>
@@ -676,7 +725,7 @@ namespace vencord
     }
 
     template <>
-    coco::stray patchbay::impl::receive(cr_recipe::sender sender, list_nodes req)
+    coco::stray patchbay::impl::receive(cr_recipe::sender sender, vencord::list req)
     {
         using clock = std::chrono::system_clock;
 

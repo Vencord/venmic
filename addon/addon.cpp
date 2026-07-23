@@ -171,6 +171,7 @@ namespace
             const auto include               = to_array<vencord::node>(data.Get("include"));
             const auto exclude               = to_array<vencord::node>(data.Get("exclude"));
             const auto ignore_devices        = convert<bool>(data.Get("ignore_devices"));
+            const auto mute                  = convert<bool>(data.Get("mute"));
             const auto only_speakers         = convert<bool>(data.Get("only_speakers"));
             const auto only_default_speakers = convert<bool>(data.Get("only_default_speakers"));
             const auto workaround            = to_array<vencord::node>(data.Get("workaround"));
@@ -187,6 +188,7 @@ namespace
             vencord::patchbay::get().link({
                 .include               = include.value_or(std::vector<vencord::node>{}),
                 .exclude               = exclude.value_or(std::vector<vencord::node>{}),
+                .mute                  = mute.value_or(false),
                 .ignore_devices        = ignore_devices.value_or(true),
                 .only_speakers         = only_speakers.value_or(true),
                 .only_default_speakers = only_default_speakers.value_or(true),
@@ -199,6 +201,12 @@ namespace
         Napi::Value unlink([[maybe_unused]] const Napi::CallbackInfo &) // NOLINT(*-static)
         {
             vencord::patchbay::get().unlink();
+            return {};
+        }
+
+        Napi::Value unmute([[maybe_unused]] const Napi::CallbackInfo &) // NOLINT(*-static)
+        {
+            vencord::patchbay::get().unmute();
             return {};
         }
 
@@ -217,6 +225,7 @@ namespace
                                               InstanceMethod<&patchbay::link>("link", attributes),
                                               InstanceMethod<&patchbay::list>("list", attributes),
                                               InstanceMethod<&patchbay::unlink>("unlink", attributes),
+                                              InstanceMethod<&patchbay::unmute>("unmute", attributes),
                                               StaticMethod<&patchbay::has_pipewire>("hasPipeWire", attributes),
                                           });
 

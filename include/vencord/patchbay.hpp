@@ -16,6 +16,7 @@ namespace vencord
         std::vector<node> exclude;
 
       public:
+        bool mute{true};                  // Mute sharing node initially
         bool ignore_devices{true};        // Only link against non-device nodes
                                           //
       public:                             //
@@ -44,6 +45,7 @@ namespace vencord
 
       public:
         void unlink();
+        void unmute();
 
       public:
         [[nodiscard]] std::vector<node> list(std::vector<std::string> props);

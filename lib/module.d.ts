@@ -22,12 +22,14 @@ export interface LinkData
 
     ignore_devices?: boolean;
     
+    mute?: boolean;
     workaround?: Node[];
 }
 
 export class PatchBay
 {
     unlink(): void;
+    unmute(): void;
     
     list<T extends string = DefaultProps>(props?: T[]): Node<T>[];
     link(data: Optional<LinkData, "exclude"> | Optional<LinkData, "include">): boolean;

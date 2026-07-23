@@ -65,7 +65,7 @@ namespace vencord
         std::optional<speaker> default_speaker;
 
       private:
-        std::optional<link_options> options;
+        std::optional<vencord::link_options> options;
         std::shared_ptr<std::uint32_t> workaround_target;
 
       private:
@@ -90,7 +90,8 @@ namespace vencord
         void cleanup(clean);
 
       private:
-        coco::task<void> create_mic();
+        coco::task<void> create_mic(bool);
+        coco::task<void> mute(pw::node_info, bool);
         coco::task<void> redirect(std::optional<pw::node_info> = {});
 
       private:
