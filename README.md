@@ -91,7 +91,7 @@ The Rest-Server exposes three simple endpoints
 
 ## 🐛 Debugging
 
-> [!ALERT]
+> [!IMPORTANT]  
 > Please read this before submitting an issue report!
 
 When reporting an issue please make sure to set the environment variable `VENMIC_ENABLE_LOG`.  
