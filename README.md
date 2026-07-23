@@ -95,7 +95,6 @@ The Rest-Server exposes three simple endpoints
 > Please read this before submitting an issue report!
 
 When reporting an issue please make sure to set the environment variable `VENMIC_ENABLE_LOG`.  
-
 If said variable is set venmic will output a lot of useful information to a log-file. You can find the log in either:
 - `~/.local/state/venmic/venmic.log`
 - `${XDG_STATE_HOME}/venmic/venmic.log` 
