@@ -56,6 +56,9 @@ The Rest-Server exposes three simple endpoints
   The setting `ignore_devices` is optional and will default to `true`.  
   When enabled it will prevent hardware-devices like speakers and microphones from being linked to the virtual microphone.
 
+  The setting `mute` is optional and will default to `true`.  
+  When enabled it will mute the virtual microphone by default. The user is then responsible to unmute it by calling `/unmute`.  
+
   The setting `only_speakers` is optional and will default to `true`.  
   When enabled it will prevent linking against nodes that don't play to a speaker.
 
@@ -68,6 +71,9 @@ The Rest-Server exposes three simple endpoints
 
 * (GET) `/unlink`
   > Unlinks the currently linked application
+
+* (GET) `/unmute`
+  > Unmutes the virtual microphone 
 
 ## 🏗️ Compiling
 
