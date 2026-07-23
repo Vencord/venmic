@@ -11,6 +11,33 @@ venmic - screenshare support for pipewire
 > [!WARNING]  
 > This project is not intended for standalone usage. You need a modified discord client that makes use of this.
 
+## 🐛 Bug Reports / Debugging
+
+> [!IMPORTANT]  
+> Please read this before submitting an issue report!
+
+When reporting an issue please make sure to set the environment variable `VENMIC_ENABLE_LOG`.  
+If said variable is set venmic will output a lot of useful information to a log-file. You can find the log in either:
+- `~/.local/state/venmic/venmic.log`
+- `${XDG_STATE_HOME}/venmic/venmic.log` 
+
+**It is highly recommended to include this log file in your issue report otherwise we may not be able to help you!**  
+Alternatively, you can also set the environment variable `VENMIC_LOG_LEVEL` to `1` before starting Vesktop - venmic will then print more logs to the terminal.
+
+## 🏗️ Compiling
+
+* Rest-Server
+    ```bash
+    git clone https://github.com/Vencord/venmic && cd venmic 
+    cmake -B build && cmake --build build
+    ```
+
+* Node-Addon
+    ```bash
+    git clone https://github.com/Vencord/venmic && cd venmic
+    pnpm install
+    ```
+
 ## 📖 Usage
 
 _venmic_ can be used as node-module or as a local rest-server.
@@ -74,33 +101,6 @@ The Rest-Server exposes three simple endpoints
 
 * (GET) `/unmute`
   > Unmutes the virtual microphone 
-
-## 🏗️ Compiling
-
-* Rest-Server
-    ```bash
-    git clone https://github.com/Vencord/venmic && cd venmic 
-    cmake -B build && cmake --build build
-    ```
-
-* Node-Addon
-    ```bash
-    git clone https://github.com/Vencord/venmic && cd venmic
-    pnpm install
-    ```
-
-## 🐛 Debugging
-
-> [!IMPORTANT]  
-> Please read this before submitting an issue report!
-
-When reporting an issue please make sure to set the environment variable `VENMIC_ENABLE_LOG`.  
-If said variable is set venmic will output a lot of useful information to a log-file. You can find the log in either:
-- `~/.local/state/venmic/venmic.log`
-- `${XDG_STATE_HOME}/venmic/venmic.log` 
-
-**It is highly recommended to include this log file in your issue report otherwise we may not be able to help you!**  
-Alternatively, you can also set the environment variable `VENMIC_LOG_LEVEL` to `1` before starting Vesktop - venmic will then print more logs to the terminal.
 
 ## 🤝 Acknowledgements
 
