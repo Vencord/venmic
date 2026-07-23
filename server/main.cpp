@@ -102,6 +102,13 @@ int main(int argc, char **args)
                    response.status = 200;
                });
 
+    server.Get("/unmute",
+               [](const auto &, auto &response)
+               {
+                   patchbay::get().unmute();
+                   response.status = 200;
+               });
+
     logger::get()("Running on port: {}", port);
     server.listen("0.0.0.0", port);
 
