@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 microdnf install -y git tar nodejs npm curl libatomic
 microdnf install -y make automake gcc gcc-c++ cmake ninja-build

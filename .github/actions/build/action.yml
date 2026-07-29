@@ -15,19 +15,19 @@ runs:
   using: "composite"
   steps:
     - name: 📋 Install Base Dependencies
-      shell: bash
+      shell: sh
       run: ./docker/${{ inputs.libc }}/dependencies.sh
 
     - name: 🔨 Compile (Server)
       if: inputs.kind == 'server'
-      shell: bash
+      shell: sh
       run: |
         cmake -B build
         cmake --build build
 
     - name: 🔨 Compile (Addon)
       if: inputs.kind == 'addon'
-      shell: bash
+      shell: sh
       run: |
         npm install --global pnpm
         VENMIC_NOT_DOCKER=1 ./docker/build.sh
