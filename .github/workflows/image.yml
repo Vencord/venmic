@@ -40,7 +40,7 @@ jobs:
         run: |
           # Prepare...
           cd docker
-          cp build.sh ${{ matrix.lib }}/
+          cp build.sh ${{ matrix.libc }}/
 
           # Build...
           docker buildx build --platform=linux/${{ matrix.arch }} --tag venmic-builder-${{ matrix.libc }}-${{ matrix.arch }} --load ${{ matrix.libc }}
