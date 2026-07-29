@@ -20,14 +20,14 @@ runs:
 
     - name: 🔨 Compile (Server)
       if: inputs.kind == 'server'
-      shell: sh
+      shell: bash
       run: |
         cmake -B build
         cmake --build build
 
     - name: 🔨 Compile (Addon)
       if: inputs.kind == 'addon'
-      shell: sh
+      shell: bash
       run: |
         npm install --global pnpm
         VENMIC_NOT_DOCKER=1 ./docker/build.sh
