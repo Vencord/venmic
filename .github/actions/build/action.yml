@@ -7,22 +7,16 @@ inputs:
     required: false
     description: Either 'server' or 'addon'
 
-  platform:
+  libc:
     required: true
-    description: Either 'fedora' (glibc) or 'alpine' (musl)
+    description: Either 'glibc' or 'musl'
 
 runs:
   using: "composite"
   steps:
-    - name: 📋 Install Base Dependencies (Fedora)
-      if: inputs.platform == 'fedora'
+    - name: 📋 Install Base Dependencies
       shell: bash
-      run: ./docker/glibc/dependencies.sh
-
-    - name: 📋 Install Base Dependencies (Alpine)
-      if: inputs.platform == 'alpine'
-      shell: bash
-      run: ./docker/musl/dependencies.sh
+      run: ./docker/${{ inputs.libc }}/dependencies.sh
 
     - name: 🔨 Compile (Server)
       if: inputs.kind == 'server'
