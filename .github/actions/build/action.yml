@@ -1,0 +1,39 @@
+name: "🎤 Compile Venmic"
+description: "Installs Dependencies & Compiles Venmic"
+
+inputs:
+  kind:
+    default: "addon"
+    required: false
+    description: Either 'server' or 'addon'
+
+  platform:
+    required: true
+    description: Either 'fedora' (glibc) or 'alpine' (musl)
+
+runs:
+  using: "composite"
+  steps:
+    - name: 📋 Install Base Dependencies (Fedora)
+      if: inputs.platform == 'fedora'
+      shell: bash
+      run: ./docker/glibc/dependencies.sh
+
+    - name: 📋 Install Base Dependencies (Alpine)
+      if: inputs.platform == 'alpine'
+      shell: bash
+      run: ./docker/musl/dependencies.sh
+
+    - name: 🔨 Compile (Server)
+      if: inputs.kind == 'server'
+      shell: bash
+      run: |
+        cmake -B build
+        cmake --build build
+
+    - name: 🔨 Compile (Addon)
+      if: inputs.kind == 'addon'
+      shell: bash
+      run: |
+        npm install --global pnpm
+        VENMIC_NOT_DOCKER=1 ./docker/build.sh

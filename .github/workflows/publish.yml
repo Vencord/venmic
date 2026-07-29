@@ -4,15 +4,15 @@ on:
       test:
         type: boolean
         description: Skip publishing step
+
       fix:
         type: boolean
         description: Skip build step
-      reuse:
-        type: string
-        description: Workflow to reuse artifacts from
+
       no-tag-check:
         type: boolean
         description: Skip tag checking step
+
   push:
     tags:
       - "*"
@@ -24,6 +24,7 @@ jobs:
     strategy:
       matrix:
         arch: ["arm64", "amd64"]
+        libc: ["glibc", "musl"]
 
     runs-on: ubuntu-latest
 
@@ -39,21 +40,12 @@ jobs:
       - name: 🏗️ Build Addon
         if: ${{ github.event.inputs.fix != 'true' }}
         run: |
-          docker run -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest /build.sh
-
-      - name: ♻️ Reuse Artifact
-        if: ${{ github.event.inputs.fix == 'true' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: addon-${{ matrix.arch }}
-          path: build/Release
-          github-token: ${{ secrets.ACTIONS_TOKEN }}
-          run-id: ${{ github.event.inputs.reuse }}
+          docker run -v ${{ github.workspace }}:/work --platform linux/${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}:latest /build.sh
 
       - name: 📤 Upload Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: addon-${{ matrix.arch }}
+          name: addon-${{ matrix.libc }}-${{ matrix.arch }}
           path: build/Release
 
   publish:
@@ -96,23 +88,29 @@ jobs:
           dnf install -y libatomic
           pnpm install --ignore-scripts
 
-      - name: 📦 Download Build (amd64)
-        uses: actions/download-artifact@v8
+      - name: 📦 Package (amd64/glibc) 
+        uses: ./.github/actions/package
         with:
-          name: addon-amd64
-          path: build/Release
+          libc: "glibc"
+          arch: "amd64"
 
-      - name: 🛠️ Prepare Prebuilds (amd64)
-        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=x64
-
-      - name: 📦 Download Build (arm64)
-        uses: actions/download-artifact@v8
+      - name: 📦 Package (amd64/musl) 
+        uses: ./.github/actions/package
         with:
-          name: addon-arm64
-          path: build/Release
+          libc: "musl"
+          arch: "amd64"
 
-      - name: 🛠️ Prepare Prebuilds (arm64)
-        run: pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=arm64
+      - name: 📦 Package (arm64/glibc) 
+        uses: ./.github/actions/package
+        with:
+          libc: "glibc"
+          arch: "arm64"
+
+      - name: 📦 Package (arm64/musl) 
+        uses: ./.github/actions/package
+        with:
+          libc: "musl"
+          arch: "arm64"
 
       - name: 🛒 Publish
         if: ${{ github.event.inputs.test != 'true' }}

@@ -1,12 +1,10 @@
 #!/bin/bash
 
-# Ensure pnpm is loaded
-source /root/.bashrc
+if [ -z "${VENMIC_NOT_DOCKER}" ]; then
+    source /root/.bashrc
+    cd /work
+fi
 
-# Let's get to work!
-cd /work
-
-# Export Threads for Make and Ninja
 export MAKEFLAGS=-j$(nproc)
 export PARALLEL_LEVEL=$(nproc)
 

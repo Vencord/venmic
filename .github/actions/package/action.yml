@@ -1,0 +1,25 @@
+name: "📦 Package Addon"
+description: "Downloads and prepares an addon via pkg-prebuilds"
+
+inputs:
+  libc:
+    required: true
+    description: Either 'glibc' or 'musl'
+
+  arch:
+    required: true
+    description: Either 'amd64' or 'arm64'
+
+runs:
+  using: "composite"
+  steps:
+      - name: 📦 Download Build
+        uses: actions/download-artifact@v8
+        with:
+          name: addon-${{ inputs.libc }}-${{ inputs.arch }}
+          path: build/Release
+
+      - name: 🛠️ Prepare Prebuilds
+        shell: bash
+        run: |
+          pnpm pkg-prebuilds-copy --baseDir build/Release --source venmic-addon.node --name=venmic-addon --strip --napi_version=7 --arch=${{ inputs.arch == 'amd64' && 'x64' || 'arm64' }} --libc=${{ inputs.libc }}

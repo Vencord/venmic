@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         arch: ["arm64", "amd64"]
+        libc: ["glibc", "musl"]
 
     runs-on: ubuntu-latest
 
@@ -31,17 +32,19 @@ jobs:
         id: cache-image
         uses: actions/cache@v6
         with:
-          key: venmic-builder-cache-${{ matrix.arch }}
-          path: |
-            docker/venmic-builder-${{ matrix.arch }}.tar
+          key: venmic-builder-cache-${{ matrix.libc }}-${{ matrix.arch }}
+          path: docker/venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}.tar
 
       - name: 🏗️ Build Image
         if: steps.cache-image.outputs.cache-hit != 'true' && ${{ github.event.inputs.skip-cache != 'true' }}
         run: |
+          # Prepare...
           cd docker
+          cp build.sh ${{ matrix.lib }}/
 
-          docker buildx build --platform=linux/${{ matrix.arch }} --tag venmic-builder-${{ matrix.arch }} --load .
-          docker save venmic-builder-${{ matrix.arch }} > venmic-builder-${{ matrix.arch }}.tar
+          # Build...
+          docker buildx build --platform=linux/${{ matrix.arch }} --tag venmic-builder-${{ matrix.libc }}-${{ matrix.arch }} --load ${{ matrix.libc }}
+          docker save venmic-builder-${{ matrix.libc }}-${{ matrix.arch }} > venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}.tar
 
       - name: 🔐 Login
         uses: docker/login-action@v4
@@ -52,7 +55,9 @@ jobs:
 
       - name: ♻️ Publish Images
         run: |
-          docker load < docker/venmic-builder-${{ matrix.arch }}.tar
-          docker image tag venmic-builder-${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.arch }}
+          # Prepare...
+          docker load < docker/venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}.tar
+          docker image tag venmic-builder-${{ matrix.libc }}-${{ matrix.arch }} ghcr.io/vencord/venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}
 
-          docker push ghcr.io/vencord/venmic-builder-${{ matrix.arch }}:latest
+          # Upload...
+          docker push ghcr.io/vencord/venmic-builder-${{ matrix.libc }}-${{ matrix.arch }}:latest

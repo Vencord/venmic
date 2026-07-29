@@ -1,0 +1,37 @@
+on:
+  push:
+
+name: 🧰 Compile
+
+jobs:
+  build-container:
+    strategy:
+      matrix:
+        libc: ["glibc", "musl"]
+        kind: ["addon", "server"]
+
+        include:
+          - libc: glibc
+            container: fedora:44
+
+          - libc: musl
+            container: alpine:3
+
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v7
+
+      - name: 📦 Compile
+        uses: ./.github/actions/build
+        with:
+          libc: ${{ matrix.libc }}
+          kind: ${{ matrix.kind }}
+
+      - name: 📦 Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.libc }}-${{ matrix.kind }}
+          path: build
