@@ -43,6 +43,24 @@ namespace vencord
         std::vector<pw::link> links;
     };
 
+    class loopback
+    {
+        struct state;
+
+      private:
+        std::unique_ptr<state> m_state;
+
+      public:
+        loopback(pw::impl::mod);
+
+      public:
+        loopback(loopback &&) noexcept;
+        loopback &operator=(loopback &&) noexcept;
+
+      public:
+        ~loopback();
+    };
+
     enum class clean : std::uint8_t
     {
         without_mic = 0,
@@ -70,7 +88,7 @@ namespace vencord
 
       private:
         std::optional<share_node> virt_mic;
-        std::unordered_map<std::uint32_t, pw::impl::mod> virt_links;
+        std::unordered_map<std::uint32_t, loopback> virt_links;
 
       private:
         std::unordered_map<std::uint32_t, pw::node_info> nodes;

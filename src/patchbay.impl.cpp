@@ -11,10 +11,57 @@
 
 #include <glaze/glaze.hpp>
 
+#include <pipewire/impl-module.h>
+
 namespace vencord
 {
     using enum logger::level;
     using namespace std::chrono_literals;
+
+    struct loopback::state
+    {
+        pw_impl_module *module;
+        spa_hook hook;
+        pw_impl_module_events events;
+    };
+
+    // `libpipewire-module-loopback` schedules its own destruction once one of its streams becomes unconnected (e.g. the
+    // captured application went away). We have to keep track of that, otherwise we end up destroying it a second time.
+    loopback::loopback(pw::impl::mod module) : m_state(std::make_unique<state>())
+    {
+        m_state->module = std::move(module).release();
+
+        spa_zero(m_state->hook);
+        spa_zero(m_state->events);
+
+        m_state->events.version = PW_VERSION_IMPL_MODULE_EVENTS;
+        m_state->events.destroy = [](void *data)
+        {
+            auto *const self = static_cast<state *>(data);
+
+            spa_hook_remove(&self->hook);
+            spa_zero(self->hook);
+
+            self->module = nullptr;
+        };
+
+        pw_impl_module_add_listener(m_state->module, &m_state->hook, &m_state->events, m_state.get());
+    }
+
+    loopback::loopback(loopback &&) noexcept = default;
+
+    loopback &loopback::operator=(loopback &&) noexcept = default;
+
+    loopback::~loopback()
+    {
+        if (!m_state || !m_state->module)
+        {
+            return;
+        }
+
+        spa_hook_remove(&m_state->hook);
+        pw_impl_module_destroy(std::exchange(m_state->module, nullptr));
+    }
 
     patchbay::impl::impl()
     {
