@@ -94,13 +94,9 @@ namespace vencord
 
     logger &logger::get()
     {
-        static std::unique_ptr<logger> instance;
-
-        if (!instance)
-        {
-            instance = std::unique_ptr<logger>(new logger);
-        }
-
+        // Intentionally leaked: the patchbay singleton is destroyed during static destruction as well, and its worker
+        // thread still logs while shutting down. Destroying the logger first would cause a use-after-free on exit.
+        static auto *const instance = new logger;
         return *instance;
     }
 } // namespace vencord
