@@ -53,6 +53,24 @@ namespace vencord
         virt_mic.reset();
     }
 
+    coco::task<std::optional<patchbay::impl::map<pw::port_info>>> patchbay::impl::await_ports(pw::node_info info)
+    {
+        using clock = std::chrono::steady_clock;
+        auto rtn    = map<pw::port_info>{};
+
+        for (const auto start = clock::now(); (rtn = ports_of(info)).size() < 4 && clock::now() - start < 5s;)
+        {
+            co_await core->sync();
+        }
+
+        if (rtn.size() < 4)
+        {
+            co_return std::nullopt;
+        }
+
+        co_return rtn;
+    }
+
     coco::task<void> patchbay::impl::create_mic(bool should_mute)
     {
         auto receiver = co_await core->create(pw::null_factory{
@@ -67,12 +85,12 @@ namespace vencord
                                     receiver.error().message);
         }
 
-        const auto receiver_info = receiver->info();
-        auto receiver_ports      = std::map<std::uint32_t, pw::port_info>{};
+        const auto receiver_info  = receiver->info();
+        const auto receiver_ports = co_await await_ports(receiver_info);
 
-        while ((receiver_ports = ports_of(receiver_info)).size() < 4)
+        if (!receiver_ports.has_value())
         {
-            co_await core->sync();
+            co_return logger::get()(error, "[patchbay] (create_mic) failed to wait for ports of receiver");
         }
 
         if (should_mute)
@@ -91,12 +109,12 @@ namespace vencord
             co_return logger::get()(error, "[patchbay] (create_mic) failed to create source: {}", source.error().message);
         }
 
-        const auto source_info = source->info();
-        auto source_ports      = std::map<std::uint32_t, pw::port_info>{};
+        const auto source_info  = source->info();
+        const auto source_ports = co_await await_ports(source_info);
 
-        while ((source_ports = ports_of(source_info)).size() < 4)
+        if (!source_ports.has_value())
         {
-            co_await core->sync();
+            co_return logger::get()(error, "[patchbay] (create_mic) failed to wait for ports of source");
         }
 
         static const auto is_output = [](const auto &info)
@@ -112,14 +130,15 @@ namespace vencord
             return from.props["audio.channel"] == to.props["audio.channel"];
         };
 
-        const auto candidates = source_ports                   //
+        const auto candidates = *source_ports                  //
                                 | std::views::values           //
                                 | std::views::filter(is_input) //
                                 | std::ranges::to<std::vector>();
-        const auto sources    = receiver_ports                  //
-                                | std::views::values            //
-                                | std::views::filter(is_output) //
-                                | std::ranges::to<std::vector>();
+
+        const auto sources = *receiver_ports                 //
+                             | std::views::values            //
+                             | std::views::filter(is_output) //
+                             | std::ranges::to<std::vector>();
 
         auto links = std::vector<pw::link>{};
 
@@ -411,6 +430,7 @@ namespace vencord
                     .description = playback,
                     .node        = to.id,
                 },
+            .dont_fallback = true,
         });
 
         if (!loopback.has_value())
@@ -424,7 +444,7 @@ namespace vencord
         logger::get()(info, "[patchbay] (link) created loopback {} -> {}", from.id, to.id);
     }
 
-    std::map<std::uint32_t, pw::port_info> patchbay::impl::ports_of(const pw::node_info &info)
+    patchbay::impl::map<pw::port_info> patchbay::impl::ports_of(const pw::node_info &info)
     {
         const auto node   = std::format("{}", info.id);
         const auto filter = [node](const auto &item)
@@ -438,7 +458,7 @@ namespace vencord
                | std::ranges::to<std::map>();
     }
 
-    std::map<std::uint32_t, pw::link_info> patchbay::impl::links_of(const pw::node_info &info)
+    patchbay::impl::map<pw::link_info> patchbay::impl::links_of(const pw::node_info &info)
     {
         const auto filter = [&info](const auto &item)
         {

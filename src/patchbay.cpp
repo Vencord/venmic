@@ -78,7 +78,12 @@ namespace vencord
         static auto info = [](pa_context *, const pa_server_info *info, void *data)
         {
             auto &[loop, result] = *reinterpret_cast<userdata *>(data);
-            result.set_value(info->server_name);
+
+            if (info && info->server_name)
+            {
+                result.set_value(info->server_name);
+            }
+
             pa_mainloop_quit(loop, 0);
         };
 

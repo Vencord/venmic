@@ -51,6 +51,10 @@ namespace vencord
 
     struct patchbay::impl
     {
+        template <typename T>
+        using map = std::map<std::uint32_t, T>;
+
+      public:
         std::unique_ptr<pw_recipe::sender> sender;
         std::unique_ptr<cr_recipe::receiver> receiver;
 
@@ -90,6 +94,9 @@ namespace vencord
         void cleanup(clean);
 
       private:
+        coco::task<std::optional<map<pw::port_info>>> await_ports(pw::node_info);
+
+      private:
         coco::task<void> create_mic(bool);
         coco::task<void> mute(pw::node_info, bool);
         coco::task<void> redirect(std::optional<pw::node_info> = {});
@@ -99,8 +106,8 @@ namespace vencord
         void link(const pw::node_info &, const pw::node_info &);
 
       private:
-        std::map<std::uint32_t, pw::port_info> ports_of(const pw::node_info &);
-        std::map<std::uint32_t, pw::link_info> links_of(const pw::node_info &);
+        map<pw::port_info> ports_of(const pw::node_info &);
+        map<pw::link_info> links_of(const pw::node_info &);
 
       private:
         template <typename T>
