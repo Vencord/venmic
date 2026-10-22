@@ -107,5 +107,6 @@ The Rest-Server exposes three simple endpoints
 * [Curve/rohrkabel](https://github.com/Curve/rohrkabel/)
 * [cmake-js](https://github.com/cmake-js/cmake-js)
 * [@wwmm](https://github.com/wwmm) for improving compatibility with [EasyEffects](https://github.com/wwmm/easyeffects)
+* [@Vendicated](https://github.com/Vendicated) for tips on reducing slop
 
 Kudos to all the developers involved, keep up the great work!
