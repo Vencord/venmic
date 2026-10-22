@@ -64,3 +64,7 @@ body:
           required: true
         - label: the problem does occur with the reproduction steps I provided
           required: true
+        - label: I have read the [contribution rules](https://github.com/Vencord/venmic/blob/main/CONTRIBUTING.md) and made sure this issue complies with it
+          required: true
+        - label: This issue was written by me, and not an AI agent. 
+          required: true
