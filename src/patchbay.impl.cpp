@@ -264,7 +264,7 @@ namespace vencord
             co_return;
         }
 
-        const auto make = []<typename T>(auto id, T &&fn)
+        static const auto make = []<typename T>(auto id, T &&fn)
         {
             return std::shared_ptr<std::uint32_t>{new std::uint32_t{id}, [fn = std::forward<T>(fn)](auto *item)
                                                   {
@@ -297,65 +297,74 @@ namespace vencord
 
     bool patchbay::impl::should_link(const pw::node_info &node)
     {
+        static const auto accept = []()
+        {
+            logger::get()(debug, "[patchbay] (should_link) └ accepted!");
+            return true;
+        };
+
+        static const auto reject = [](std::string_view reason)
+        {
+            logger::get()(debug, "[patchbay] (should_link) └ {}", reason);
+            return false;
+        };
+
         if (!options.has_value())
         {
             return false;
         }
 
-        logger::get()(debug, "[patchbay] (should_link) checking {}", node.id);
-
         auto props = node.props;
+        logger::get()(debug, "[patchbay] (should_link) checking {}", node.id);
 
         if (props["node.description"].starts_with("venmic-loopback"))
         {
-            logger::get()(debug, "[patchbay] (should_link) └ is virt-mic loopback", node.id);
-            return false;
+            return reject("is virt-mic loopback");
         }
 
         if (!options->include.empty() && !matches(options->include, node.props))
         {
-            logger::get()(debug, "[patchbay] (should_link) └ did not match include criteria", node.id);
-            return false;
+            return reject("did not match include criteria");
         }
 
         if (matches(options->exclude, node.props))
         {
-            logger::get()(debug, "[patchbay] (should_link) └ matched exclude criteria", node.id);
-            return false;
+            return reject("matched exclude criteria");
+        }
+
+        if (default_speaker.has_value() && node.id == default_speaker->id)
+        {
+            return reject("is the default speaker");
         }
 
         auto ports = ports_of(node);
 
         if (ports.empty())
         {
-            logger::get()(debug, "[patchbay] (should_link) └ has no ports", node.id);
-            return false;
+            return reject("has no ports");
         }
 
         if (virt_mic.has_value() && virt_mic->chromium_source.id() == node.id)
         {
-            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic-source", node.id);
-            return false;
+            return reject("is the virt-mic-source");
         }
 
         if (virt_mic.has_value() && virt_mic->loopback_receiver.id() == node.id)
         {
-            logger::get()(debug, "[patchbay] (should_link) └ is the virt-mic-receiver", node.id);
-            return false;
+            return reject("is the virt-mic-receiver");
         }
 
         if (options->ignore_devices && !props["device.id"].empty())
         {
-            logger::get()(debug, "[patchbay] (should_link) └ is a device", node.id);
-            return false;
+            return reject("is a device");
         }
 
         if (!options->include.empty())
         {
-            return true;
+            return accept();
         }
 
-        const auto outputs = [](const auto &item)
+        static const auto outputs = [](const auto &item)
         {
             return item.second.input.node;
         };
@@ -377,39 +386,33 @@ namespace vencord
                              | std::views::transform(info)    //
                              | std::ranges::to<std::vector>();
 
-        const auto is_device = [](const auto &item)
+        static const auto is_device = [](const auto &item)
         {
             return item.props.contains("device.id");
         };
 
         if (options->only_speakers && !std::ranges::any_of(targets, is_device))
         {
-            logger::get()(debug, "[patchbay] (should_link) └ does not link to speakers", node.id);
-            return false;
+            return reject("does not link to speakers");
         }
 
-        const auto speakers_known = default_speaker.has_value() && default_speaker->id.has_value();
-
-        if (options->only_default_speakers && !speakers_known)
-        {
-            logger::get()(debug, "[patchbay] (should_link) └ default speakers are unknown", node.id);
-            return false;
-        }
-
-        const auto extract_id = [](auto &&item)
+        const auto speakers_known    = default_speaker.has_value() && default_speaker->id.has_value();
+        static const auto extract_id = [](auto &&item)
         {
             return item.id;
         };
 
-        if (options->only_default_speakers && !std::ranges::contains(targets, default_speaker->id, extract_id))
+        if (options->only_default_speakers && !speakers_known)
         {
-            logger::get()(debug, "[patchbay] (should_link) └ does not link to default speakers", node.id);
-            return false;
+            return reject("default speakers are unknown");
         }
 
-        logger::get()(debug, "[patchbay] (should_link) └ accepted!");
+        if (options->only_default_speakers && !std::ranges::contains(targets, *default_speaker->id, extract_id))
+        {
+            return reject("does not link to default speakers");
+        }
 
-        return true;
+        return accept();
     }
 
     void patchbay::impl::link(const pw::node_info &from, const pw::node_info &to)
@@ -657,7 +660,7 @@ namespace vencord
 
     void patchbay::impl::add_global(pw::global global)
     {
-        const auto forward = []<typename T>(auto self, auto global, std::type_identity<T>) -> coco::stray
+        static const auto forward = []<typename T>(auto self, auto global, std::type_identity<T>) -> coco::stray
         {
             auto bound = co_await self->registry->template bind<T>(global.id);
 
@@ -764,7 +767,7 @@ namespace vencord
             return std::ranges::all_of(req.props, [&](const auto &key) { return !other[key].empty(); });
         };
 
-        const auto can_output = [](const auto &item)
+        static const auto can_output = [](const auto &item)
         {
             return item.second.output.max > 0;
         };
