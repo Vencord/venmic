@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(venmic LANGUAGES CXX VERSION 7.2.4)
+project(venmic LANGUAGES CXX VERSION 7.2.5)
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Library options                                                                                       |
@@ -109,7 +109,7 @@ include("cmake/cpm.cmake")
 
 CPMFindPackage(
   NAME           rohrkabel
-  VERSION        13.1.2
+  VERSION        13.2.0
   GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
   OPTIONS        "rohrkabel_install ${rohrkabel_should_install}"
 )

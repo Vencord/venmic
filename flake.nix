@@ -19,7 +19,7 @@
         let
           pkgs = import nixpkgs { inherit system; };
           pipewirePkgs = import nixpkgs-pipewire { inherit system; };
-          llvmPkgs = pkgs.llvmPackages;
+          llvmPkgs = pkgs.llvmPackages_22;
         in
         {
           default =
@@ -30,25 +30,20 @@
               {
                 name = "venmic-dev-shell";
 
-                CC = "${llvmPkgs.clang}/bin/clang";
-                CXX = "${llvmPkgs.clang}/bin/clang++";
-
                 nativeBuildInputs = with pkgs; [
                   llvmPkgs.lldb
-                  llvmPkgs.clang
                   llvmPkgs.libllvm
+                  llvmPkgs.clang-tools
 
                   zig
                   ninja
 
+                  git
                   cmake
                   pkg-config
 
                   pnpm
                   nodejs
-
-                  git
-                  clang-tools
                 ];
 
                 buildInputs = [

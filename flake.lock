@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1793015021,
+        "narHash": "sha256-Ee5BWo8sh3pGt70QUdRajnaginqFmWvrtdBc4gJzhks=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "718f670e845328e9c2cecdd832835712b2cbd065",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-pipewire": {
+      "locked": {
+        "lastModified": 1746156909,
+        "narHash": "sha256-XaRXFhit/3ZAL1tilqp7uG+Qz/81ucRCG35VB1ZexIE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "17cda7ed37dddb0bde2b057c8e2234e8a7b91706",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "17cda7ed37dddb0bde2b057c8e2234e8a7b91706",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-pipewire": "nixpkgs-pipewire"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

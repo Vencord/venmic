@@ -350,6 +350,11 @@ namespace vencord
             return false;
         }
 
+        if (!options->include.empty())
+        {
+            return true;
+        }
+
         const auto outputs = [](const auto &item)
         {
             return item.second.input.node;
@@ -430,7 +435,11 @@ namespace vencord
                     .description = playback,
                     .node        = to.id,
                 },
-            .dont_fallback = true,
+            .props =
+                {
+                    {"node.dont-fallback", "true"},
+                    {"node.dont-move", "true"},
+                },
         });
 
         if (!loopback.has_value())
